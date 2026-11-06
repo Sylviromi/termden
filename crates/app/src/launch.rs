@@ -30,7 +30,7 @@ fn prompt(id: HarnessId, name: &str) -> String {
          prints the new harness id N. Then run `termdenctl wait N 20` (it needs a few seconds \
          before it accepts input), give it its task with `termdenctl send --enter N \"task\"` and \
          check with `termdenctl screen N` that the text arrived; never target `self`/your own id. \
-         Git commits from your tile are refused until you have a name and a tag; the commit hook adds the closing line `Written by <name> [<tag>].` itself, so never write your own sign-off or co-author line, and keep subjects clean (type(scope): summary). Do not type into other agents terminals except helpers you started, and do not move or \
+         Git commits from your tile are refused until you have a name and a tag; the commit hook adds the closing line `> Written by <name> [<tag>].` itself, so never write your own sign-off or co-author line, and keep subjects clean (type(scope): summary). Do not type into other agents terminals except helpers you started, and do not move or \
          resize tiles.",
         id.raw(),
     )

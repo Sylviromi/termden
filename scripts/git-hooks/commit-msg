@@ -26,9 +26,9 @@ if [ -z "$tag" ]; then
     exit 1
 fi
 
-line="Written by $name [$tag]."
+line="> Written by $name [$tag]."
 last=$(grep -v '^[[:space:]]*$' "$msg" | grep -v '^#' | tail -n1)
-case "$last" in "Written by "*) exit 0 ;; esac
+case "$last" in "> Written by "*) exit 0 ;; esac
 printf '\n%s\n' "$line" > "$msg.tail"
 # keep git's comment block (if any) below our line
 if grep -q '^#' "$msg"; then

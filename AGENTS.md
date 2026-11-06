@@ -55,7 +55,7 @@ The repo uses `scripts/git-hooks` (`git config core.hooksPath scripts/git-hooks`
 set per repo, never global). Commits made from an agent tile are **refused**
 until the agent has its own name (not "Claude 2", "opencode 2"...) and a tag
 (`termden_set_name`, `termden_set_tag`). The `commit-msg` hook then appends
-`Written by <name> [<tag>].` as the last line, so write clean
+`> Written by <name> [<tag>].` as the last line, so write clean
 `type(scope): summary` subjects and never add your own sign-off or
 `Co-Authored-By`. Humans and plain shell tiles commit as usual. Commit only your
 own files (`git add <paths>`), never `git add -A` while other agents are editing.
