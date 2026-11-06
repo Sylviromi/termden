@@ -94,7 +94,10 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind) -> Option<String> 
                 }},
             });
             fs::write(&config, body.to_string()).ok()?;
-            Some(format!("OPENCODE_CONFIG={} opencode", q(&config)))
+            Some(format!(
+                "OPENCODE_CONFIG={} opencode --standalone",
+                q(&config)
+            ))
         }
     }
 }
