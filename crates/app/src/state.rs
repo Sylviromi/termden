@@ -206,6 +206,7 @@ impl TermdenApp {
             } else {
                 "started"
             };
+            app.activity.retain(|e| e.name != "Termden");
             app.log("Termden", verb.into(), 0);
         }
         app

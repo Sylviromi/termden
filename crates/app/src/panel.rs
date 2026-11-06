@@ -266,7 +266,36 @@ fn activity(app: &TermdenApp) -> AnyElement {
                         .child("quiet so far")
                 }))
                 .children(app.activity.iter().map(|entry| {
-                    let color = theme.accent(entry.accent);
+                    let system = entry.name == "Termden";
+                    let color = if system {
+                        theme.green
+                    } else {
+                        theme.accent(entry.accent)
+                    };
+                    if system {
+                        return div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .px(px(8.))
+                            .py(px(3.))
+                            .rounded(px(6.))
+                            .bg(color.opacity(0.14))
+                            .border_1()
+                            .border_color(color.opacity(0.3))
+                            .text_size(theme.ui(10.))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(color)
+                            .child(format!("{} {}", entry.name, entry.message).to_uppercase())
+                            .child(
+                                div()
+                                    .font_family(theme.mono_font.clone())
+                                    .text_size(theme.ui(8.5))
+                                    .font_weight(FontWeight::NORMAL)
+                                    .text_color(color.opacity(0.7))
+                                    .child(entry.time.clone()),
+                            );
+                    }
                     div()
                         .flex()
                         .items_start()
@@ -293,7 +322,13 @@ fn activity(app: &TermdenApp) -> AnyElement {
                                         .child(entry.name.clone()),
                                 )
                                 .child(
-                                    div().text_color(theme.subtext).child(entry.message.clone()),
+                                    div()
+                                        .text_color(if system {
+                                            theme.green.opacity(0.75)
+                                        } else {
+                                            theme.subtext
+                                        })
+                                        .child(entry.message.clone()),
                                 ),
                         )
                         .child(
