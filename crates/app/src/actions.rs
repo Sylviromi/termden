@@ -356,6 +356,7 @@ impl TermdenApp {
             self.log_harness(id, "left".into());
         }
         self.mail.retain(|m| m.to != id);
+        self.mail_notified.remove(&id);
         self.sessions.remove(&id);
         pty::kill_tmux_session(id);
         if let Some(workspace) = self.workspace_mut(ws) {

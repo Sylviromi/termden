@@ -76,11 +76,19 @@ impl AppState {
     }
 
     pub fn next_harness_id(&self) -> HarnessId {
+        // Activity lines remember the harness they are about. Never hand their
+        // id to a newcomer: an old "so-and-so left" line would then be painted
+        // in the new agent's colour.
         let max = self
             .workspaces
             .iter()
             .flat_map(|w| w.harnesses.iter())
             .map(|h| h.id.raw())
+            .chain(
+                self.activity
+                    .iter()
+                    .filter_map(|entry| entry.harness.map(|id| id.raw())),
+            )
             .max()
             .unwrap_or(0);
         HarnessId::new(max + 1)
@@ -183,5 +191,23 @@ mod tests {
         );
         assert_eq!(back.next_harness_id(), HarnessId::new(5));
         assert_eq!(back.next_workspace_id(), WorkspaceId::new(2));
+    }
+
+    #[test]
+    fn ids_are_not_reused_while_activity_still_remembers_them() {
+        // A departed agent keeps a line in the feed. Handing its id to the
+        // next agent would repaint that line in the newcomer's colour.
+        let state = AppState {
+            activity: vec![Activity {
+                time: "00:00".into(),
+                name: "gone".into(),
+                message: "left".into(),
+                accent: 0,
+                to: None,
+                harness: Some(HarnessId::new(7)),
+            }],
+            ..Default::default()
+        };
+        assert_eq!(state.next_harness_id(), HarnessId::new(8));
     }
 }
