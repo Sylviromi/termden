@@ -1,0 +1,39 @@
+#!/bin/sh
+# Commits made from a termden agent tile need a named, tagged agent; the
+# sign-off line is appended here. Humans outside termden and plain shell tiles
+# commit as usual. Enable with: git config core.hooksPath scripts/git-hooks
+msg="$1"
+[ -n "$TERMDEN_HARNESS" ] || exit 0
+case "$(head -n1 "$msg")" in Merge*) exit 0 ;; esac
+
+who=$(termdenctl whoami "$TERMDEN_HARNESS" 2>/dev/null) || {
+    echo "termden: cannot identify harness $TERMDEN_HARNESS (is termden running?); commit refused." >&2
+    exit 1
+}
+kind=$(printf '%s' "$who" | cut -f1)
+name=$(printf '%s' "$who" | cut -f2)
+tag=$(printf '%s' "$who" | cut -f3)
+[ "$kind" = shell ] && exit 0
+
+if [ -z "$name" ] || printf '%s' "$name" | grep -Eqi '^(claude|claude code|opencode|open-code|pi|shell)( [0-9]+)?$'; then
+    echo "termden: commit refused: this agent has no name of its own (it is '$name')." >&2
+    echo "Call termden_set_name with a short unique name, then retry." >&2
+    exit 1
+fi
+if [ -z "$tag" ]; then
+    echo "termden: commit refused: agent '$name' has no tag." >&2
+    echo "Call termden_set_tag with a one-word role (frontend, docs, ...), then retry." >&2
+    exit 1
+fi
+
+line="Written by $name [$tag]."
+last=$(grep -v '^[[:space:]]*$' "$msg" | grep -v '^#' | tail -n1)
+case "$last" in "Written by "*) exit 0 ;; esac
+printf '\n%s\n' "$line" > "$msg.tail"
+# keep git's comment block (if any) below our line
+if grep -q '^#' "$msg"; then
+    awk -v l="$line" 'BEGIN{d=0} /^#/ && !d {print "\n" l "\n"; d=1} {print}' "$msg" > "$msg.new" && mv "$msg.new" "$msg"
+else
+    cat "$msg.tail" >> "$msg"
+fi
+rm -f "$msg.tail"

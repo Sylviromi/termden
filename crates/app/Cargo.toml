@@ -1,0 +1,22 @@
+[package]
+name = "termden-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "GPUI front end for termden"
+
+[[bin]]
+name = "termden"
+path = "src/main.rs"
+
+[dependencies]
+termden-core.workspace = true
+gpui.workspace = true
+# gpui -> zed-async-tar -> xattr 0.2.3 references `libc::ENOATTR`, which libc
+# stopped defining on Linux in 0.2.190. Keep libc pinned until xattr ships a
+# fixed 0.2.x (or zed-async-tar moves to xattr 1.x).
+libc = "=0.2.189"
+alacritty_terminal = "0.26"
+async-channel = "2"
+serde_json = "1"

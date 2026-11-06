@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=termden
+GenericName=Agent terminal workspace
+Comment=Workspaces and tiled terminals for coding agents
+Exec=/mnt/Projects/termden/scripts/launch.sh
+Icon=termden
+Terminal=false
+Categories=Development;
+Keywords=terminal;tmux;claude;agents;
+StartupWMClass=termden

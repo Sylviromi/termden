@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/app", "crates/daemon", "crates/cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT"
+description = "Workspace and harness control surface for terminal coding agents"
+
+[workspace.dependencies]
+termden-core = { path = "crates/core" }
+gpui = "0.2.2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
