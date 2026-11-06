@@ -410,6 +410,7 @@ fn workspace_card(
                 .items_center()
                 .h(px(46.))
                 .px(px(7.))
+                .mt(px(6.))
                 .gap(px(5.))
                 .child(
                     div()
@@ -530,6 +531,7 @@ fn workspace_card(
                 .flex()
                 .flex_col()
                 .px(px(5.))
+                .pt(px(6.))
                 .pb(px(6.))
                 .gap(px(1.))
                 .children(workspace.harnesses.iter().map(|harness| {
@@ -853,7 +855,8 @@ fn kind_picker(
         .flex()
         .gap(px(4.))
         .px(px(9.))
-        .pb(px(6.))
+        .pt(px(6.))
+        .pb(px(3.))
         .children(HarnessKind::ALL.into_iter().map(|kind| {
             div()
                 .id(ElementId::named_usize(
