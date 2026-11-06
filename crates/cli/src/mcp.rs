@@ -214,7 +214,7 @@ mod tests {
         let init = handle(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}})).unwrap();
         assert_eq!(init["result"]["protocolVersion"], "2025-03-26");
         let list = handle(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list"})).unwrap();
-        assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 8);
+        assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 9);
         assert!(handle(&json!({"jsonrpc":"2.0","method":"notifications/initialized"})).is_none());
     }
 }

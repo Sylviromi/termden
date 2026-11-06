@@ -20,7 +20,7 @@ fn prompt(id: HarnessId, name: &str) -> String {
          name you and describe your role and current work. Before anything else, even if your very first message is a task and even if it seems \
          unrelated, call termden_set_name with a short unique name (not the default kind name) and \
          termden_set_tag with a one-word role (frontend, backend, debugger...), and termden_set_pronouns with the pronouns you choose for yourself (shown next to your name); keep all unless \
-         the user asks you to change them. Keep termden_set_title current with a short line about \
+         the user asks you to change them. Choose with variety in mind: there is no default. Call termden_agents first and pick a name and pronouns (she/her, he/him, they/them, it/its...) that differ from the agents already there, and a name that does not sound like theirs (vary the style, origin and length). Keep termden_set_title current with a short line about \
          what you are doing. IMPORTANT: whenever you have options for the user to choose between \
          (design variants, logos, approaches, names) or the user asks you to show them options, \
          call termden_ask_user_choice (2-8 options, images as absolute png/jpg/svg paths) so a \
