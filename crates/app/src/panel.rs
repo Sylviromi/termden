@@ -448,17 +448,23 @@ fn workspace_card(
                                 .gap(px(1.))
                                 .child(
                                     div()
+                                        .relative()
+                                        .top(px(4.))
                                         .text_size(theme.ui(12.5))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(if active { theme.text } else { theme.subtext })
-                                        .truncate()
+                                        .overflow_hidden()
+                                        .text_ellipsis()
+                                        .line_clamp(1)
                                         .child(workspace.name.clone()),
                                 )
                                 .child(
                                     div()
                                         .text_size(theme.ui(10.))
                                         .text_color(theme.subtext.opacity(0.6))
-                                        .truncate()
+                                        .overflow_hidden()
+                                        .text_ellipsis()
+                                        .line_clamp(1)
                                         .child(workspace.path.clone()),
                                 ),
                         )
@@ -603,12 +609,15 @@ fn harness_row(
                             div()
                                 .flex_1()
                                 .min_w(px(0.))
+                                .overflow_hidden()
                                 .flex()
-                                .items_baseline()
-                                .gap(px(5.))
+                                .items_center()
+                                .gap(px(3.))
                                 .child(
                                     div()
                                         .min_w(px(0.))
+                                        .max_w_full()
+                                        .flex_shrink_0()
                                         .text_size(theme.ui(12.))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(if selected {
@@ -616,15 +625,22 @@ fn harness_row(
                                         } else {
                                             theme.subtext
                                         })
-                                        .truncate()
+                                        .overflow_hidden()
+                                        .text_ellipsis()
+                                        .line_clamp(1)
                                         .child(harness.name.clone()),
                                 )
                                 .children((!harness.pronouns.is_empty()).then(|| {
-                                    div()
-                                        .flex_shrink_0()
+                                    let mut pronouns = div();
+                                    pronouns.style().flex_shrink = Some(100.);
+                                    pronouns
+                                        .min_w(px(0.))
+                                        .overflow_hidden()
+                                        .text_ellipsis()
+                                        .line_clamp(1)
                                         .text_size(theme.ui(9.))
-                                        .text_color(theme.overlay)
-                                        .child(harness.pronouns.clone())
+                                        .text_color(theme.overlay.opacity(0.85))
+                                        .child(format!("({})", harness.pronouns))
                                 })),
                         )
                         .children((harness.unread > 0).then(|| {
@@ -641,7 +657,9 @@ fn harness_row(
                         .mt(px(-2.))
                         .text_size(theme.ui(9.5))
                         .text_color(theme.subtext.opacity(0.6))
-                        .truncate()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .line_clamp(1)
                         .child(subtitle(app, harness)),
                 ),
         )
