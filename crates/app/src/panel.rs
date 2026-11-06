@@ -7,7 +7,7 @@ use termden_core::{Harness, HarnessKind, Workspace};
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
 use crate::widgets::{
-    ICON_FONT, dot, hspacer, icon_button, icons, kind_badge, pill, spinner, spinner_frame,
+    ICON_FONT, dot, hspacer, icon_button, icons, kind_badge, pill, spinner, spinner_frame, tag_pill,
 };
 
 pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
@@ -663,28 +663,7 @@ fn harness_row(
                         .child(subtitle(app, harness)),
                 ),
         )
-        .children((!harness.tag.is_empty()).then(|| {
-            let color = theme.accent(
-                harness
-                    .tag
-                    .to_lowercase()
-                    .bytes()
-                    .fold(0usize, |h, b| h.wrapping_mul(31).wrapping_add(b as usize)),
-            );
-            div()
-                .flex_shrink_0()
-                .h(px(18.))
-                .px(px(6.))
-                .rounded(px(5.))
-                .flex()
-                .items_center()
-                .bg(color.opacity(0.18))
-                .text_color(color)
-                .font_family(theme.mono_font.clone())
-                .text_size(theme.ui(10.5))
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(harness.tag.to_uppercase())
-        }))
+        .children((!harness.tag.is_empty()).then(|| tag_pill(&harness.tag, theme)))
         .children((harness.subagent_count() > 0).then(|| {
             div()
                 .flex_shrink_0()

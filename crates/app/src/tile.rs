@@ -8,7 +8,7 @@ use crate::canvas::TRect;
 use crate::state::TermdenApp;
 use crate::terminal;
 use crate::theme::Theme;
-use crate::widgets::{dot, icon_button, icons, kind_badge, pill, spinner};
+use crate::widgets::{dot, icon_button, icons, kind_badge, pill, spinner, tag_pill};
 
 const BORDER: f32 = 2.0;
 const HEADER: f32 = 33.0; // 32 + 1px rule
@@ -49,7 +49,6 @@ pub fn render(
 
     let session = app.sessions.get(&id);
     let exited = session.is_some_and(|s| s.exited);
-    let title = session.map(|s| s.title.clone()).unwrap_or_default();
     let zoomed = app.zoomed == Some(id);
     let close_armed = app.close_armed(id);
 
@@ -126,22 +125,8 @@ pub fn render(
                     .child(harness.pronouns.clone())
             }))
             .child(kind_badge(harness.kind, theme))
-            .children((rect.w >= 520.0).then(|| {
-                div()
-                    .text_size(theme.ui(9.))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(accent.opacity(0.9))
-                    .child(workspace.name.to_uppercase())
-            }))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w(px(0.))
-                    .text_size(theme.ui(10.))
-                    .text_color(theme.overlay)
-                    .truncate()
-                    .child(title),
-            )
+            .children((!harness.tag.is_empty()).then(|| tag_pill(&harness.tag, theme)))
+            .child(div().flex_1().min_w(px(0.)))
             .child(status_chips(
                 harness,
                 app.sessions.get(&id).map(|s| (s.cols, s.rows)),

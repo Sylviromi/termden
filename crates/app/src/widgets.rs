@@ -69,6 +69,29 @@ pub fn pill(text: impl Into<SharedString>, fg: Hsla, bg: Hsla, theme: &Theme) ->
         .child(text.into())
 }
 
+/// A harness tag ("FRONTEND", "TERMDEN DEV") as a colored badge. The color is
+/// hashed from the tag text so the same tag always keeps the same accent.
+pub fn tag_pill(tag: &str, theme: &Theme) -> Div {
+    let color = theme.accent(
+        tag.to_lowercase()
+            .bytes()
+            .fold(0usize, |h, b| h.wrapping_mul(31).wrapping_add(b as usize)),
+    );
+    div()
+        .flex_shrink_0()
+        .h(px(16.))
+        .px(px(5.))
+        .rounded(px(4.))
+        .flex()
+        .items_center()
+        .bg(color.opacity(0.18))
+        .text_color(color)
+        .font_family(theme.mono_font.clone())
+        .text_size(theme.ui(9.))
+        .font_weight(FontWeight::SEMIBOLD)
+        .child(tag.to_uppercase())
+}
+
 pub fn icon_button(id: impl Into<ElementId>, glyph: &'static str, theme: &Theme) -> Stateful<Div> {
     let hover_bg = theme.surface0;
     let hover_fg = theme.text;
