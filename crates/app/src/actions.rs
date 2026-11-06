@@ -49,6 +49,34 @@ fn new_workspace(state: &mut AppState, dir: &Path) -> WorkspaceId {
     id
 }
 
+/// "joined", "joined · backend", "joined · backend · she/her".
+pub(crate) fn join_message(harness: &Harness) -> String {
+    let mut details = Vec::new();
+    if !harness.tag.is_empty() {
+        details.push(harness.tag.clone());
+    }
+    if !harness.pronouns.is_empty() {
+        details.push(harness.pronouns.clone());
+    }
+    if details.is_empty() {
+        "joined".into()
+    } else {
+        format!("joined · {}", details.join(" · "))
+    }
+}
+
+/// True for the auto-generated names of agent harnesses ("opencode",
+/// "Claude 2", "pi 3"). Shells are not included: "Shell joined" is real.
+fn is_placeholder_name(name: &str) -> bool {
+    ["Claude", "opencode", "pi"].iter().any(|base| {
+        name == *base
+            || name.strip_prefix(base).is_some_and(|rest| {
+                rest.strip_prefix(' ')
+                    .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+            })
+    })
+}
+
 fn new_harness(id: HarnessId, ws: WorkspaceId, kind: HarnessKind, siblings: &[Harness]) -> Harness {
     let base = match kind {
         HarnessKind::ClaudeCode => "Claude",
@@ -72,6 +100,11 @@ fn new_harness(id: HarnessId, ws: WorkspaceId, kind: HarnessKind, siblings: &[Ha
         tag: String::new(),
         title: String::new(),
         pronouns: String::new(),
+        color: None,
+        // Shells never pick a name, so announce them right away. Agents wait
+        // until they say who they are (or start working without saying).
+        announced: kind == HarnessKind::Shell,
+        started: kind == HarnessKind::Shell,
     }
 }
 
@@ -100,12 +133,35 @@ impl TermdenApp {
     }
 
     pub fn log(&mut self, name: impl Into<String>, message: String, accent: usize) {
-        self.activity.push(Activity {
+        self.push_activity(Activity {
             time: crate::state::clock(0),
             name: name.into(),
             message,
             accent,
+            to: None,
+            harness: None,
         });
+    }
+
+    pub fn log_harness(&mut self, id: HarnessId, message: String) {
+        if let Some((workspace, harness)) = self.harness(id) {
+            let (name, accent) = (
+                harness.name.clone(),
+                harness.color.unwrap_or(workspace.accent),
+            );
+            self.push_activity(Activity {
+                time: crate::state::clock(0),
+                name,
+                message,
+                accent,
+                to: None,
+                harness: Some(id),
+            });
+        }
+    }
+
+    fn push_activity(&mut self, entry: Activity) {
+        self.activity.push(entry);
         if self.activity.len() > 200 {
             self.activity.remove(0);
         }
@@ -113,11 +169,121 @@ impl TermdenApp {
         self.save();
     }
 
-    pub fn log_harness(&mut self, id: HarnessId, message: String) {
-        if let Some((workspace, harness)) = self.harness(id) {
-            let (name, accent) = (harness.name.clone(), workspace.accent);
-            self.log(name, message, accent);
+    /// Older builds wrote a placeholder `"<kind> <n> joined"` line at spawn,
+    /// before the agent had a name. Those lines have no harness id and cannot
+    /// be reassociated, so drop them on load; the agent's real join line
+    /// appears when it announces itself.
+    pub(crate) fn drop_placeholder_joins(&mut self) {
+        self.activity.retain(|entry| {
+            entry.harness.is_some()
+                || entry.message != "joined"
+                || !is_placeholder_name(&entry.name)
+        });
+    }
+
+    fn join_entry_mut(&mut self, id: HarnessId, old_name: Option<&str>) -> Option<&mut Activity> {
+        self.activity.iter_mut().rev().find(|entry| {
+            entry.message.starts_with("joined")
+                && (entry.harness == Some(id)
+                    || (entry.harness.is_none() && old_name.is_some_and(|name| entry.name == name)))
+        })
+    }
+
+    /// Rewrite the join line for `id`; returns false when there is none.
+    fn touch_join_entry(
+        &mut self,
+        id: HarnessId,
+        old_name: Option<&str>,
+        name: String,
+        message: Option<String>,
+        accent: usize,
+    ) -> bool {
+        let Some(entry) = self.join_entry_mut(id, old_name) else {
+            return false;
+        };
+        let mut changed = false;
+        if entry.name != name {
+            entry.name = name;
+            changed = true;
         }
+        if let Some(message) = message
+            && entry.message != message
+        {
+            entry.message = message;
+            changed = true;
+        }
+        if entry.harness != Some(id) {
+            entry.harness = Some(id);
+            changed = true;
+        }
+        if entry.accent != accent {
+            entry.accent = accent;
+            changed = true;
+        }
+        if changed {
+            self.save();
+        }
+        true
+    }
+
+    /// An agent got its name: log its arrival (once) and keep that one line in
+    /// step with the tag and pronouns until it starts working.
+    pub(crate) fn announce_name(&mut self, id: HarnessId) {
+        let Some((workspace, harness)) = self.harness(id) else {
+            return;
+        };
+        if harness.kind == HarnessKind::Shell {
+            return;
+        }
+        let name = harness.name.clone();
+        let message = join_message(harness);
+        let accent = harness.color.unwrap_or(workspace.accent);
+        let (announced, started) = (harness.announced, harness.started);
+        if !announced {
+            if let Some(harness) = self
+                .workspaces
+                .iter_mut()
+                .find_map(|workspace| workspace.harness_mut(id))
+            {
+                harness.announced = true;
+            }
+            if !self.touch_join_entry(id, None, name, Some(message.clone()), accent) {
+                self.log_harness(id, message);
+            }
+        } else {
+            // Older state files had no `announced`; a later rename still fixes
+            // a placeholder line that was logged under the default name.
+            let message = (!started).then(|| join_message(harness));
+            self.touch_join_entry(id, None, name, message, accent);
+        } // The agent may already be running when it introduces itself.
+        let working = self
+            .harness(id)
+            .is_some_and(|(_, harness)| harness.status == HarnessStatus::Working);
+        if working && !started {
+            if let Some(harness) = self
+                .workspaces
+                .iter_mut()
+                .find_map(|workspace| workspace.harness_mut(id))
+            {
+                harness.started = true;
+            }
+            self.log_harness(id, "started working".into());
+        }
+    }
+
+    /// Tag and pronouns usually arrive right after the name. Rewrite the join
+    /// line instead of stacking another row; never flip `announced` here.
+    pub(crate) fn refresh_join(&mut self, id: HarnessId) {
+        let Some((workspace, harness)) = self.harness(id) else {
+            return;
+        };
+        if harness.kind == HarnessKind::Shell || !harness.announced || harness.started {
+            return;
+        }
+        let name = harness.name.clone();
+        let message = join_message(harness);
+        let accent = harness.color.unwrap_or(workspace.accent);
+        self.touch_join_entry(id, None, name, Some(message), accent);
     }
 
     pub fn add_workspace(&mut self, dir: &Path) -> WorkspaceId {
@@ -142,6 +308,7 @@ impl TermdenApp {
         let harness = new_harness(id, ws, kind, &workspace.harnesses);
         workspace.harnesses.push(harness);
         workspace.expanded = true;
+        termden_core::assign_agent_colors(&mut self.workspaces, crate::state::color_seed());
 
         let target = self
             .focused
@@ -169,17 +336,25 @@ impl TermdenApp {
         }
 
         self.adding = None;
-        self.log_harness(id, "joined".into());
+        // Agents wait until they name themselves; shells are announced now.
+        if kind == HarnessKind::Shell {
+            self.log_harness(id, "joined".into());
+        }
         self.focus_harness(id);
         Some(id)
     }
 
     /// Close a tile for good: the tmux session is killed.
     pub fn close_harness(&mut self, id: HarnessId) {
-        let Some(ws) = self.harness(id).map(|(w, _)| w.id) else {
+        let Some((workspace, harness)) = self.harness(id) else {
             return;
         };
-        self.log_harness(id, "left".into());
+        let ws = workspace.id;
+        // An agent that never introduced itself never joined; do not log a
+        // departure for a name the panel still showed as "starting…".
+        if harness.announced {
+            self.log_harness(id, "left".into());
+        }
         self.mail.retain(|m| m.to != id);
         self.sessions.remove(&id);
         pty::kill_tmux_session(id);
@@ -227,16 +402,27 @@ impl TermdenApp {
     }
 
     pub fn rename_harness(&mut self, id: HarnessId, name: String) {
+        let mut old_name = None;
         if let Some(harness) = self
             .workspaces
             .iter_mut()
             .find_map(|workspace| workspace.harness_mut(id))
         {
+            old_name = Some(harness.name.clone());
             let mut chars = name.chars();
             harness.name = chars
                 .next()
                 .map_or(String::new(), |c| c.to_uppercase().chain(chars).collect());
         }
+        if let Some(old_name) = old_name
+            && let Some((workspace, harness)) = self.harness(id)
+        {
+            let name = harness.name.clone();
+            let message = (!harness.started).then(|| join_message(harness));
+            let accent = harness.color.unwrap_or(workspace.accent);
+            self.touch_join_entry(id, Some(&old_name), name, message, accent);
+        }
+        self.announce_name(id);
         self.save();
     }
 
@@ -291,6 +477,7 @@ impl TermdenApp {
         {
             harness.tag = tag.chars().take(12).collect();
         }
+        self.refresh_join(id);
         self.save();
     }
 
@@ -302,6 +489,7 @@ impl TermdenApp {
         {
             harness.pronouns = pronouns.trim().to_lowercase().chars().take(16).collect();
         }
+        self.refresh_join(id);
         self.save();
     }
 
@@ -353,5 +541,27 @@ impl TermdenApp {
         eprintln!("termden: reload failed: {error}");
         self.log("Termden", "could not update itself".into(), 7);
         self.exe = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_placeholder_name;
+
+    #[test]
+    fn placeholder_names_are_kind_labels_and_numbers() {
+        for name in [
+            "opencode",
+            "opencode 2",
+            "Claude",
+            "Claude 12",
+            "pi",
+            "pi 3",
+        ] {
+            assert!(is_placeholder_name(name), "{name}");
+        }
+        for name in ["Wren", "Juno", "Shell", "opencode dev", "Claude Code"] {
+            assert!(!is_placeholder_name(name), "{name}");
+        }
     }
 }

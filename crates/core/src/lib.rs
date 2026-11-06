@@ -11,7 +11,7 @@ pub mod state;
 pub use config::{Config, ThemeId};
 pub use layout::{Axis, DropZone, LayoutNode};
 pub use model::{
-    Activity, Choice, ChoiceOption, Harness, HarnessId, HarnessKind, HarnessStatus, Mail, Subagent,
-    SubagentId, Workspace, WorkspaceId,
+    AGENT_COLORS, Activity, Choice, ChoiceOption, Harness, HarnessId, HarnessKind, HarnessStatus,
+    Mail, Subagent, SubagentId, Workspace, WorkspaceId, assign_agent_colors,
 };
 pub use state::AppState;

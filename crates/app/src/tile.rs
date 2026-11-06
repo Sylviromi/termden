@@ -38,6 +38,7 @@ pub fn render(
 
     let theme = &app.theme;
     let accent = theme.accent(workspace.accent);
+    let name_color = theme.agent(harness.color.unwrap_or(workspace.accent));
     let focused = app.focused == Some(id);
     let dragging = app
         .drag
@@ -111,13 +112,32 @@ pub fn render(
                 }),
             )
             .child(dot(theme.status(harness.status), 9.))
-            .child(
+            .child(if crate::panel::pending(harness) {
+                div()
+                    .flex()
+                    .flex_shrink_0()
+                    .items_center()
+                    .gap(px(5.))
+                    .child(
+                        spinner(theme, theme.overlay, app.tick)
+                            .relative()
+                            .top(px(2.)),
+                    )
+                    .child(
+                        div()
+                            .text_size(theme.ui(11.5))
+                            .text_color(theme.overlay)
+                            .child("starting…"),
+                    )
+                    .into_any_element()
+            } else {
                 div()
                     .text_size(theme.ui(12.))
                     .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text)
-                    .child(harness.name.clone()),
-            )
+                    .text_color(name_color)
+                    .child(harness.name.clone())
+                    .into_any_element()
+            })
             .children((!harness.pronouns.is_empty()).then(|| {
                 div()
                     .text_size(theme.ui(10.))

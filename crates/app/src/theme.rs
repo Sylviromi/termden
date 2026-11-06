@@ -98,6 +98,16 @@ impl Theme {
         self.accents[index % self.accents.len()]
     }
 
+    /// An accent pushed toward pastel-neon: saturated but light.
+    pub fn agent(&self, index: usize) -> Hsla {
+        let c = self.accent(index);
+        Hsla {
+            s: (c.s * 1.15).clamp(0.8, 1.0),
+            l: 0.76,
+            ..c
+        }
+    }
+
     pub fn status(&self, status: HarnessStatus) -> Hsla {
         match status {
             HarnessStatus::Working => self.green,

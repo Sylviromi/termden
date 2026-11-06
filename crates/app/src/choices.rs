@@ -51,10 +51,7 @@ pub fn parse(from: HarnessId, body: &Value) -> Result<Choice, String> {
 
 impl TermdenApp {
     pub fn add_choice(&mut self, choice: Choice) {
-        let name = self
-            .harness(choice.from)
-            .map_or("agent".into(), |(_, h)| h.name.clone());
-        self.log(name, format!("needs your choice: {}", choice.title), 1);
+        self.log_harness(choice.from, format!("needs your choice: {}", choice.title));
         self.choices.push(choice);
         self.choice_open = true;
         self.save();

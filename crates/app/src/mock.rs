@@ -37,6 +37,9 @@ pub fn build() -> AppState {
                     tag: "backend".into(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
                 Harness {
                     id: HarnessId::new(2),
@@ -50,6 +53,9 @@ pub fn build() -> AppState {
                     tag: "reviewer".into(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
                 Harness {
                     id: HarnessId::new(3),
@@ -63,6 +69,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
             ],
         },
@@ -85,6 +94,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
                 Harness {
                     id: HarnessId::new(5),
@@ -98,6 +110,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
             ],
         },
@@ -120,6 +135,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
                 Harness {
                     id: HarnessId::new(7),
@@ -136,6 +154,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
                 Harness {
                     id: HarnessId::new(8),
@@ -149,6 +170,9 @@ pub fn build() -> AppState {
                     tag: String::new(),
                     title: String::new(),
                     pronouns: String::new(),
+                    color: None,
+                    announced: true,
+                    started: true,
                 },
             ],
         },
@@ -216,6 +240,8 @@ pub fn seed_activity(app: &mut TermdenApp) {
             name: name.into(),
             message: message.into(),
             accent,
+            to: None,
+            harness: None,
         });
     }
 }

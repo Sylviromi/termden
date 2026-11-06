@@ -15,6 +15,9 @@ const HUMAN_QUIET: Duration = Duration::from_secs(5);
 
 impl TermdenApp {
     pub fn send_mail(&mut self, from: Option<HarnessId>, to: HarnessId, text: String) {
+        let sender_color = from
+            .and_then(|id| self.harness(id))
+            .map(|(w, h)| h.color.unwrap_or(w.accent));
         let from = from.and_then(|id| self.harness(id)).map_or_else(
             || "user".to_string(),
             |(_, h)| match h.tag.as_str() {
@@ -23,9 +26,19 @@ impl TermdenApp {
             },
         );
         if let Some((workspace, target)) = self.harness(to) {
-            let (target, accent) = (target.name.clone(), workspace.accent);
+            let target = (
+                target.name.clone(),
+                target.color.unwrap_or(workspace.accent),
+            );
             let sender = from.split(" [").next().unwrap_or(&from).to_string();
-            self.log("New message", format!("{sender} → {target}"), accent);
+            self.log(
+                sender,
+                "sent a message".into(),
+                sender_color.unwrap_or(usize::MAX),
+            );
+            if let Some(entry) = self.activity.last_mut() {
+                entry.to = Some(target);
+            }
         }
         self.mail.push(Mail {
             to,

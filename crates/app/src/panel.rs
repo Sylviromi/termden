@@ -1,8 +1,8 @@
 use gpui::{
-    AnyElement, Context, Div, ElementId, FontWeight, MouseButton, PathPromptOptions, div,
+    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, div,
     prelude::*, px,
 };
-use termden_core::{Harness, HarnessKind, Workspace};
+use termden_core::{Activity, Harness, HarnessKind, Workspace};
 
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
@@ -266,11 +266,34 @@ fn activity(app: &TermdenApp) -> AnyElement {
                         .child("quiet so far")
                 }))
                 .children(app.activity.iter().map(|entry| {
+                    // Entries remember their harness now; older ones only
+                    // stored a name and a workspace accent.
+                    let live = |entry: &Activity| {
+                        if let Some((workspace, harness)) =
+                            entry.harness.and_then(|id| app.harness(id))
+                        {
+                            return harness.color.unwrap_or(workspace.accent);
+                        }
+                        app.workspaces
+                            .iter()
+                            .flat_map(|w| &w.harnesses)
+                            .find(|h| h.name == entry.name)
+                            .and_then(|h| h.color)
+                            .unwrap_or(entry.accent)
+                    };
+                    let live_by_name = |name: &str, stored: usize| {
+                        app.workspaces
+                            .iter()
+                            .flat_map(|w| &w.harnesses)
+                            .find(|h| h.name == name)
+                            .and_then(|h| h.color)
+                            .unwrap_or(stored)
+                    };
                     let system = entry.name == "Termden";
                     let color = if system {
                         theme.green
                     } else {
-                        theme.accent(entry.accent)
+                        entry_color(theme, live(entry))
                     };
                     if system {
                         return div()
@@ -311,6 +334,7 @@ fn activity(app: &TermdenApp) -> AnyElement {
                         .child(
                             div()
                                 .flex_1()
+                                .min_w(px(0.))
                                 .flex()
                                 .flex_wrap()
                                 .gap_x(px(5.))
@@ -321,8 +345,23 @@ fn activity(app: &TermdenApp) -> AnyElement {
                                         .text_color(color)
                                         .child(entry.name.clone()),
                                 )
+                                .children(entry.to.as_ref().map(|(to, accent)| {
+                                    let to_color = entry_color(theme, live_by_name(to, *accent));
+                                    div()
+                                        .flex()
+                                        .gap_x(px(5.))
+                                        .child(div().text_color(theme.overlay).child("→"))
+                                        .child(
+                                            div()
+                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .text_color(to_color)
+                                                .child(to.clone()),
+                                        )
+                                }))
                                 .child(
                                     div()
+                                        .flex_1()
+                                        .min_w(px(60.))
                                         .text_color(if system {
                                             theme.green.opacity(0.75)
                                         } else {
@@ -552,10 +591,13 @@ fn harness_row(
     cx: &mut Context<TermdenApp>,
 ) -> AnyElement {
     let theme = &app.theme;
-    let accent = theme.accent(workspace.accent);
+    let accent = theme.agent(harness.color.unwrap_or(workspace.accent));
     let selected = app.focused == Some(harness.id);
     let hover_bg = theme.surface0.opacity(0.5);
     let id = harness.id;
+    // Without a caption the row is a single line, which the flex centring then
+    // puts on the row's vertical middle.
+    let caption = subtitle(app, harness);
 
     div()
         .id(ElementId::named_usize("harness", id.raw() as usize))
@@ -615,23 +657,38 @@ fn harness_row(
                                 .flex()
                                 .items_center()
                                 .gap(px(3.))
-                                .child(
+                                .child(if pending(harness) {
+                                    div()
+                                        .flex()
+                                        .flex_shrink_0()
+                                        .items_center()
+                                        .gap(px(5.))
+                                        .child(
+                                            spinner(theme, theme.overlay, app.tick)
+                                                .relative()
+                                                .top(px(2.)),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_size(theme.ui(11.5))
+                                                .text_color(theme.overlay)
+                                                .child("starting…"),
+                                        )
+                                        .into_any_element()
+                                } else {
                                     div()
                                         .min_w(px(0.))
                                         .max_w_full()
                                         .flex_shrink_0()
                                         .text_size(theme.ui(12.))
                                         .font_weight(FontWeight::MEDIUM)
-                                        .text_color(if selected {
-                                            theme.text
-                                        } else {
-                                            theme.subtext
-                                        })
+                                        .text_color(accent)
                                         .overflow_hidden()
                                         .text_ellipsis()
                                         .line_clamp(1)
-                                        .child(harness.name.clone()),
-                                )
+                                        .child(harness.name.clone())
+                                        .into_any_element()
+                                })
                                 .children((!harness.pronouns.is_empty()).then(|| {
                                     let mut pronouns = div();
                                     pronouns.style().flex_shrink = Some(100.);
@@ -654,7 +711,7 @@ fn harness_row(
                             )
                         })),
                 )
-                .child(
+                .children((!caption.is_empty()).then(|| {
                     div()
                         .mt(px(-2.))
                         .text_size(theme.ui(9.5))
@@ -662,8 +719,8 @@ fn harness_row(
                         .overflow_hidden()
                         .text_ellipsis()
                         .line_clamp(1)
-                        .child(subtitle(app, harness)),
-                ),
+                        .child(caption)
+                })),
         )
         .children((!harness.tag.is_empty()).then(|| tag_pill(&harness.tag, theme)))
         .children((harness.subagent_count() > 0).then(|| {
@@ -691,6 +748,13 @@ fn harness_row(
         }))
         .child(dot(theme.status(harness.status), 7.5))
         .into_any_element()
+}
+
+/// A harness that has not introduced itself yet: still running under the
+/// auto-generated name, with no name, tag or pronouns from the agent. Shells
+/// never introduce themselves, so they keep their name.
+pub(crate) fn pending(harness: &Harness) -> bool {
+    harness.kind != HarnessKind::Shell && !harness.announced
 }
 
 /// What a harness row says under its name: the live terminal title (tmux
@@ -955,4 +1019,13 @@ fn confirm_remove(
                 .child("cancel"),
         )
         .into_any_element()
+}
+
+/// Activity color index; `usize::MAX` marks the human (no agent color).
+fn entry_color(theme: &Theme, accent: usize) -> Hsla {
+    if accent == usize::MAX {
+        theme.text
+    } else {
+        theme.agent(accent)
+    }
 }

@@ -161,11 +161,13 @@ impl TermdenApp {
             })
             .flatten();
 
+        let mut workspaces = state.workspaces;
+        termden_core::assign_agent_colors(&mut workspaces, color_seed());
         let mut app = Self {
             mode,
             config,
             theme,
-            workspaces: state.workspaces,
+            workspaces,
             layouts: state.layouts,
             active,
             focused: state.focused,
@@ -207,6 +209,7 @@ impl TermdenApp {
                 "started"
             };
             app.activity.retain(|e| e.name != "Termden");
+            app.drop_placeholder_joins();
             app.log("Termden", verb.into(), 0);
         }
         app
@@ -672,12 +675,26 @@ impl TermdenApp {
     }
 
     pub fn set_status(&mut self, id: HarnessId, status: HarnessStatus) {
+        let mut first_work = false;
         if let Some(harness) = self
             .workspaces
             .iter_mut()
             .find_map(|workspace| workspace.harness_mut(id))
         {
             harness.status = status;
+            if status == HarnessStatus::Working
+                && harness.kind != HarnessKind::Shell
+                // Startup output is not work: wait until the agent has said
+                // who it is (or was named) before reporting its first turn.
+                && harness.announced
+                && !harness.started
+            {
+                harness.started = true;
+                first_work = true;
+            }
+        }
+        if first_work {
+            self.log_harness(id, "started working".into());
         }
     }
 
@@ -1065,4 +1082,10 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
     };
     let path = root.join(cwd);
     if path.is_dir() { path } else { home }
+}
+
+pub fn color_seed() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64)
 }
