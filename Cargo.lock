@@ -5586,13 +5586,14 @@ dependencies = [
 
 [[package]]
 name = "termden"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "alacritty_terminal",
  "async-channel 2.5.0",
  "dioxus-devtools",
  "gpui",
  "libc",
+ "pkg-config",
  "serde_json",
  "subsecond",
  "termden-core",
@@ -5600,7 +5601,7 @@ dependencies = [
 
 [[package]]
 name = "termden-core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -5609,7 +5610,7 @@ dependencies = [
 
 [[package]]
 name = "termden-daemon"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "termden-core",
 ]

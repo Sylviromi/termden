@@ -34,6 +34,13 @@ On Arch (AUR):
 paru -S termden-bin        # or yay -S termden-bin; updates come with -Syu
 ```
 
+With Rust, without compiling ([cargo-binstall](https://github.com/cargo-bins/cargo-binstall)
+fetches the release binary):
+
+```sh
+cargo binstall termden            # installs termden and termdenctl
+```
+
 With Rust (1.90+), building from source:
 
 ```sh

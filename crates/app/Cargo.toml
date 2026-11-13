@@ -20,6 +20,12 @@ path = "src/main.rs"
 name = "termdenctl"
 path = "src/bin/termdenctl/main.rs"
 
+# `cargo binstall termden` downloads the release tarball instead of compiling.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/termden-x86_64-linux.tar.gz"
+pkg-fmt = "tgz"
+bin-dir = "termden/{ bin }{ binary-ext }"
+
 [dependencies]
 termden-core.workspace = true
 gpui.workspace = true
@@ -32,6 +38,10 @@ async-channel = "2"
 serde_json = "1"
 subsecond = { version = "0.7.10", optional = true }
 dioxus-devtools = { version = "0.7.10", optional = true }
+
+[build-dependencies]
+# Only to check for system libraries up front (build.rs).
+pkg-config = "0.3"
 
 [features]
 # Dev only: run under `dx serve --hotpatch` to patch code into the running app.
