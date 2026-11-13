@@ -5585,7 +5585,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "termden-app"
+name = "termden"
 version = "0.1.1"
 dependencies = [
  "alacritty_terminal",
@@ -5595,14 +5595,6 @@ dependencies = [
  "libc",
  "serde_json",
  "subsecond",
- "termden-core",
-]
-
-[[package]]
-name = "termden-cli"
-version = "0.1.1"
-dependencies = [
- "serde_json",
  "termden-core",
 ]
 
@@ -5619,6 +5611,14 @@ dependencies = [
 name = "termden-daemon"
 version = "0.1.1"
 dependencies = [
+ "termden-core",
+]
+
+[[package]]
+name = "termdenctl"
+version = "0.1.1"
+dependencies = [
+ "serde_json",
  "termden-core",
 ]
 

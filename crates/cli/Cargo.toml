@@ -1,10 +1,15 @@
 [package]
-name = "termden-cli"
+name = "termdenctl"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Control CLI for termden (stub)"
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Command-line control and MCP server for termden"
 
 [[bin]]
 name = "termdenctl"

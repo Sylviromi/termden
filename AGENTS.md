@@ -25,9 +25,9 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
    the running app within seconds, no restart. Struct fields, startup code and
    `termden-core` make dx rebuild and relaunch it (tiles reattach); errors go
    to `$XDG_STATE_HOME/termden/dx.log`. A plain `target/debug/termden` instead
-   reloads when `cargo build -p termden-app -p termden-cli` replaces it.
+   reloads when `cargo build -p termden -p termdenctl` replaces it.
    Either way your own process survives: it lives in tmux. Build
-   `termden-cli` yourself after changing it; dx only serves the app.
+   `termdenctl` yourself after changing it; dx only serves the app.
    Long-lived tasks reach code through `hot!(...)` (main.rs) so patches apply
    there too; use it for any new background loop or socket handler.
 2. Check the result without touching the desktop:
@@ -70,10 +70,10 @@ own files (`git add <paths>`), never `git add -A` while other agents are editing
 ## Commands
 
 ```sh
-cargo run -p termden-app          # real window (only when the user asks)
+cargo run -p termden          # real window (only when the user asks)
 cargo check --workspace
 cargo fmt
-cargo build -p termden-app
+cargo build -p termden
 
 scripts/dev.sh                    # termden under dx serve --hot-patch
 termdenctl state|screen [h]|add <kind>|reload|screenshot [out.png]

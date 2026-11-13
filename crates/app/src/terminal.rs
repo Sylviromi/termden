@@ -396,8 +396,7 @@ fn shell(buf: &mut Buf, _harness: &Harness, root: &str, theme: &Theme, tick: u64
         .nl();
     buf.text("    Checking termden-core v0.1.0", theme.overlay)
         .nl();
-    buf.text("    Checking termden-app v0.1.0", theme.overlay)
-        .nl();
+    buf.text("    Checking termden v0.1.1", theme.overlay).nl();
     buf.text("    Finished `dev` profile in 4.21s", theme.green)
         .nl();
     buf.blank();

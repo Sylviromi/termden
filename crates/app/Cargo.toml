@@ -1,10 +1,15 @@
 [package]
-name = "termden-app"
+name = "termden"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "GPUI front end for termden"
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Workspaces and tiled terminals for coding agents (Claude Code, opencode, pi)"
 
 [[bin]]
 name = "termden"

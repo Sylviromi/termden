@@ -28,10 +28,16 @@ and icon; no root and no Rust toolchain. Linux x86_64 (Wayland or X11, glibc
 `JetBrainsMono Nerd Font` and "Material Symbols Rounded"; the installer lists
 whatever is missing. `sh install.sh --uninstall` removes it again.
 
-With Rust (1.90+) instead, building from source:
+On Arch (AUR):
 
 ```sh
-cargo install --locked --git https://github.com/Sylviromi/termden termden-app termden-cli
+paru -S termden-bin        # or yay -S termden-bin; updates come with -Syu
+```
+
+With Rust (1.90+), building from source:
+
+```sh
+cargo install --locked termden termdenctl
 ```
 
 (Debian/Ubuntu build deps: `libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
@@ -49,7 +55,7 @@ Launching termden again while it runs focuses the existing window (Hyprland).
 ```sh
 git clone https://github.com/Sylviromi/termden && cd termden
 git config core.hooksPath scripts/git-hooks   # agent-commit sign-off hook
-cargo run -p termden-app
+cargo run -p termden
 ```
 
 Source builds never self-update (rebuild instead; see below).
@@ -69,7 +75,7 @@ stay. Edits that cannot be patched (struct fields, startup code,
 and reattach, including the agent editing the code. The first build takes
 several minutes and keeps its own artifacts under `target/`.
 
-Without dx, run a plain build (`cargo build -p termden-app -p termden-cli &&
+Without dx, run a plain build (`cargo build -p termden -p termdenctl &&
 target/debug/termden`): it watches its own binary and execs into each rebuild,
 closing the window briefly. `ctrl+shift+r` reloads by hand.
 
@@ -113,16 +119,14 @@ Enter on an exited tile restarts it.
 
 ### Releasing
 
-Bump `version` in the root `Cargo.toml`, commit, then tag and push:
-
-```sh
-git tag v0.2.0 && git push origin v0.2.0
-```
-
-`.github/workflows/release.yml` tests, builds a release binary on Ubuntu 22.04
-and publishes `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
-
-
+1. Bump `version` in the root `Cargo.toml`, and the `termden-core` version in
+   `[workspace.dependencies]` to match; commit.
+2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+   `.github/workflows/release.yml` tests, builds on Ubuntu 22.04 and publishes
+   `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
+3. crates.io: `cargo publish --workspace --exclude termden-daemon`.
+4. AUR: in `packaging/aur/termden-bin`, set `pkgver`, run `updpkgsums` and
+   `makepkg --printsrcinfo > .SRCINFO`, then push both to the AUR repo.
 
 ## Headless screenshots
 

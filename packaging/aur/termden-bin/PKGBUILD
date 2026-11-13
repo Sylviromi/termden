@@ -1,0 +1,28 @@
+# Maintainer: Sylviromi <https://github.com/Sylviromi>
+# Prebuilt release binary. Bump pkgver and run `updpkgsums` after each release.
+pkgname=termden-bin
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="Workspaces and tiled terminals for coding agents (Claude Code, opencode, pi)"
+arch=('x86_64')
+url="https://github.com/Sylviromi/termden"
+license=('GPL-3.0-or-later')
+depends=('tmux' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'wayland' 'vulkan-icd-loader'
+         'fontconfig' 'freetype2' 'xdg-utils' 'noto-fonts' 'ttf-jetbrains-mono-nerd')
+optdepends=('ttf-material-symbols-variable-git: UI icons (AUR)'
+            'claude-code: Claude Code agent tiles'
+            'opencode: opencode agent tiles'
+            'vulkan-driver: GPU rendering')
+provides=('termden')
+conflicts=('termden')
+source=("termden-$pkgver.tar.gz::$url/releases/download/v$pkgver/termden-x86_64-linux.tar.gz")
+sha256sums=('df33c05a3e903d2a9c0db3f09a67ee4015832831d6bb446007c4ffaaea0122c9')
+
+package() {
+    cd termden
+    install -Dm755 termden "$pkgdir/usr/bin/termden"
+    install -Dm755 termdenctl "$pkgdir/usr/bin/termdenctl"
+    install -Dm644 termden.desktop "$pkgdir/usr/share/applications/termden.desktop"
+    install -Dm644 termden.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/termden.svg"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

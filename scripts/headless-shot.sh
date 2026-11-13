@@ -118,7 +118,7 @@ trap cleanup EXIT
 
 # Always rebuild: the script is also the quick visual check during development.
 if [ -z "${TERMDEN_SHOT_NOBUILD:-}" ]; then
-    cargo build -q -p termden-app -p termden-cli --manifest-path "$ROOT/Cargo.toml"
+    cargo build -q -p termden -p termdenctl --manifest-path "$ROOT/Cargo.toml"
 fi
 export PATH="$ROOT/target/debug:$PATH"
 
