@@ -1,17 +1,3 @@
-/// Call `f(args..)` through Subsecond's jump table when built with the
-/// `hotpatch` feature, so the newest patched version runs; a plain call
-/// otherwise. Entry points from long-lived tasks need it: code they reach
-/// stays old until a restart.
-macro_rules! hot {
-    ($f:expr, $($arg:expr),* $(,)?) => {{
-        #[cfg(feature = "hotpatch")]
-        let out = subsecond::HotFn::current($f).call(($($arg,)*));
-        #[cfg(not(feature = "hotpatch"))]
-        let out = $f($($arg),*);
-        out
-    }};
-}
-
 mod actions;
 mod canvas;
 mod choices;
@@ -63,27 +49,9 @@ fn main() {
         return;
     }
 
-    #[cfg(feature = "hotpatch")]
-    let patched = {
-        dioxus_devtools::connect_subsecond();
-        let (tx, rx) = async_channel::unbounded::<()>();
-        subsecond::register_handler(std::sync::Arc::new(move || {
-            let _ = tx.send_blocking(());
-        }));
-        rx
-    };
-
     let server_decorations = decorations::server_side_available();
 
     Application::new().run(move |cx: &mut App| {
-        #[cfg(feature = "hotpatch")]
-        cx.spawn(async move |cx| {
-            while patched.recv().await.is_ok() {
-                let _ = cx.update(|cx| cx.refresh_windows());
-            }
-        })
-        .detach();
-
         // Bundled fonts (assets/fonts): a fresh machine renders correctly
         // without installing them; installed copies keep working.
         if let Err(error) = cx.text_system().add_fonts(

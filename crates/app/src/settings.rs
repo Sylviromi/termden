@@ -103,7 +103,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .child(tip("V", "paste · drag to select and copy", theme))
                             .child(tip("+ −", "terminal text size (0 resets)", theme))
                             .child(tip(",", "open these settings", theme))
-                            .child(tip("R", "reload termden (rebuilds reload too)", theme))
+                            .child(tip("R", "restart termden (e.g. into a new build)", theme))
                             .child(tip("F11", "fullscreen (no ctrl+shift)", theme)),
                     )),
             );

@@ -11,7 +11,7 @@ opencode, pi, or a plain shell.
 **Current state: self-hosting.** Every harness is a live terminal (tmux
 client in a PTY, parsed by `alacritty_terminal`). State persists in
 `$XDG_STATE_HOME/termden/state.json`; the mock fleet is `--demo`. The app
-hot-reloads when its binary is rebuilt and exposes a control socket for
+offers a restart when its binary is rebuilt and exposes a control socket for
 `termdenctl`. No adapters or daemon yet (a future `termdend` would own the sessions).
 
 ## Working on termden from inside termden
@@ -20,18 +20,12 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
 `$TERMDEN_HARNESS` is your harness id (`self` in commands), and
 `termdenctl help` lists everything. The loop:
 
-1. Edit code. When termden runs under `scripts/dev.sh` (`dx serve
-   --hot-patch`), saving the file is enough: function bodies are patched into
-   the running app within seconds, no restart. Struct fields, startup code and
-   `termden-core` make dx rebuild and relaunch it (tiles reattach); errors show
-   in `tmux -L termden attach -t termden-dx`; `termdenctl reload` there means
-   full rebuild + relaunch (needed after struct changes). A plain `target/debug/termden` instead
-   reloads when `cargo build -p termden` replaces it.
-   Either way your own process survives: it lives in tmux. Build
-   `termdenctl` yourself after changing it (`cargo build -p termden --bin
-   termdenctl`); dx only serves the app.
-   Long-lived tasks reach code through `hot!(...)` (main.rs) so patches apply
-   there too; use it for any new background loop or socket handler.
+1. Edit code, then `cargo build -p termden` (builds `termden` and
+   `termdenctl`). The running app notices the new binary and shows a
+   "New build ready · Restart" banner; **it never restarts by itself**, the
+   user confirms (banner or ctrl+shift+r). `termdenctl reload` only offers the
+   restart too. Tell the user a restart is waiting when your change needs it.
+   Restarting execs the new build; your own process survives (tmux).
 2. Check the result without touching the desktop:
    `termdenctl screenshot target/now.png` (headless mirror of the live app),
    `termdenctl state`, `termdenctl screen <h>`, `termdenctl history <h> 300`.
@@ -77,7 +71,7 @@ cargo check --workspace
 cargo fmt
 cargo build -p termden
 
-scripts/dev.sh                    # termden under dx serve --hot-patch
+scripts/dev.sh                    # build + start termden (or focus it); launcher entry
 termdenctl state|screen [h]|add <kind>|reload|screenshot [out.png]
 
 # Headless render + capture; touches no real display:

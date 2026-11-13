@@ -27,6 +27,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         .border_color(theme.text.opacity(0.06))
         .overflow_hidden()
         .child(header(app, cx))
+        .children(restart_banner(app, cx))
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
         .child(activity(app))
@@ -1089,4 +1090,59 @@ fn entry_color(theme: &Theme, accent: usize) -> Hsla {
     } else {
         theme.agent(accent)
     }
+}
+
+/// "New build ready · Restart": termden restarts only when the user clicks
+/// (or presses ctrl+shift+r); × hides it until the next build.
+fn restart_banner(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
+    let reason = app.restart_pending.as_ref()?;
+    let theme = &app.theme;
+    Some(
+        div()
+            .id("restart-banner")
+            .mx(px(9.))
+            .mb(px(4.))
+            .h(px(32.))
+            .px(px(10.))
+            .flex()
+            .items_center()
+            .gap(px(8.))
+            .rounded(px(8.))
+            .bg(theme.green.opacity(0.14))
+            .border_1()
+            .border_color(theme.green.opacity(0.3))
+            .cursor_pointer()
+            .hover(|s| s.opacity(0.85))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.restart_pending = None;
+                this.reload();
+                cx.notify();
+            }))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w(px(0.))
+                    .truncate()
+                    .text_size(theme.ui(10.5))
+                    .text_color(theme.green)
+                    .child(reason.clone()),
+            )
+            .child(
+                div()
+                    .text_size(theme.ui(10.))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(theme.green)
+                    .child("Restart"),
+            )
+            .child(
+                icon_button("restart-dismiss", icons::CLOSE, theme)
+                    .size(px(20.))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.restart_pending = None;
+                        cx.stop_propagation();
+                        cx.notify();
+                    })),
+            )
+            .into_any_element(),
+    )
 }

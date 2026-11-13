@@ -501,13 +501,9 @@ impl TermdenApp {
         self.log_harness(id, "was restarted".into());
     }
 
-    /// Called about once a second: a successful `cargo build` replaced our
-    /// binary, so reload into it.
+    /// Called about once a second: when a `cargo build` replaced our binary,
+    /// offer a restart. Never restart unasked: the user may be mid-task.
     pub fn check_rebuilt(&mut self) {
-        // Under `dx serve`, dx patches or relaunches us itself.
-        if cfg!(feature = "hotpatch") {
-            return;
-        }
         let Some((path, mtime)) = &self.exe else {
             return;
         };
@@ -519,24 +515,24 @@ impl TermdenApp {
             .elapsed()
             .is_ok_and(|age| age > Duration::from_millis(700));
         if modified != *mtime && settled {
-            self.reload();
+            let path = path.clone();
+            self.exe = Some((path, modified));
+            self.request_restart("New build ready");
         }
+    }
+
+    /// Show the restart banner; the user confirms with its button or
+    /// ctrl+shift+r. Agents (`termdenctl reload`) can only ask.
+    pub fn request_restart(&mut self, reason: &str) {
+        if self.restart_pending.is_none() {
+            self.log("Termden", format!("{reason}: restart to apply"), 0);
+        }
+        self.restart_pending = Some(reason.to_string());
     }
 
     /// Hot reload: save, detach every tmux client, exec the current binary.
     /// Harnesses keep running in tmux and are reattached by the new process.
     pub fn reload(&mut self) {
-        // Under `dx serve` (scripts/dev.sh) the binary on disk lacks the
-        // patches; ask dx for a full rebuild and relaunch with its `r` key.
-        if cfg!(feature = "hotpatch") {
-            self.save();
-            let _ = std::process::Command::new("tmux")
-                .args(["-L", &crate::pty::tmux_socket()])
-                .args(["send-keys", "-t", "termden-dx", "r"])
-                .status();
-            self.log("Termden", "full rebuild requested".into(), 0);
-            return;
-        }
         let Some(path) = self
             .exe
             .as_ref()

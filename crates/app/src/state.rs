@@ -110,6 +110,9 @@ pub struct TermdenApp {
     /// Theme chooser in settings (`None` = collapsed to one row).
     pub theme_browser: Option<crate::settings::ThemeBrowser>,
     pub theme_scroll: ScrollHandle,
+    /// A rebuilt binary or an agent asked for a restart; the sidebar offers
+    /// it and the user confirms (`request_restart`).
+    pub restart_pending: Option<String>,
     pub popups: [crate::popup::PopupPos; 1],
     /// Questions agents asked the user, answered in the browser (`choices.rs`).
     pub choices: Vec<termden_core::Choice>,
@@ -150,7 +153,7 @@ impl TermdenApp {
         cx.spawn(async move |this, cx| {
             loop {
                 Timer::after(Duration::from_millis(120)).await;
-                let updated = this.update(cx, |this, cx| hot!(Self::on_tick, this, cx));
+                let updated = this.update(cx, |this, cx| this.on_tick(cx));
                 if updated.is_err() {
                     break;
                 }
@@ -208,6 +211,7 @@ impl TermdenApp {
             settings_open: false,
             theme_browser: None,
             theme_scroll: ScrollHandle::new(),
+            restart_pending: None,
             popups: Default::default(),
             choices: state.choices,
             showcases: state.showcases,
@@ -1149,7 +1153,7 @@ impl TermdenApp {
 
 impl Render for TermdenApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        hot!(Self::render_body, self, window, cx)
+        self.render_body(window, cx)
     }
 }
 

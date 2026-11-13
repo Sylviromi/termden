@@ -136,13 +136,9 @@ fn push_session_env(args: &mut Vec<String>, id: HarnessId, command: Option<&str>
     }
 }
 
-/// Where `termdenctl` lives: next to our binary, unless `TERMDEN_BIN_DIR`
-/// says otherwise (`dx serve` builds termden into its own directory).
+/// Where `termdenctl` lives: next to our own binary.
 pub fn bin_dir() -> Option<std::path::PathBuf> {
-    match std::env::var_os("TERMDEN_BIN_DIR") {
-        Some(dir) if !dir.is_empty() => Some(dir.into()),
-        _ => Some(std::env::current_exe().ok()?.parent()?.to_path_buf()),
-    }
+    Some(std::env::current_exe().ok()?.parent()?.to_path_buf())
 }
 
 /// Last `lines` lines of a harness's scrollback plus screen, from tmux.

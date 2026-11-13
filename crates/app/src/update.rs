@@ -132,8 +132,10 @@ impl TermdenApp {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.updating = false;
-                if let Err(error) = result {
-                    this.log("Termden", format!("update failed: {error}"), 7);
+                match result {
+                    // The user clicked Update: restart into it right away.
+                    Ok(()) => this.reload(),
+                    Err(error) => this.log("Termden", format!("update failed: {error}"), 7),
                 }
                 cx.notify();
             });

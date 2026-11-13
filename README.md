@@ -60,7 +60,7 @@ in its notes means that library's dev package is missing (on Debian/Ubuntu
 
 **Updates:** termden checks GitHub for a new release every few hours. When one
 is out, the sidebar footer shows **Update to vX.Y.Z**; click it (or run
-`termdenctl update`). The new binary is swapped in and termden reloads itself
+`termdenctl update`). The new binary is swapped in and termden restarts itself
 in place, and every tile keeps running. Re-running the installer works too.
 Launching termden again while it runs focuses the existing window (Hyprland).
 
@@ -77,21 +77,16 @@ Source builds never self-update (rebuild instead; see below).
 ## Developing termden inside termden
 
 ```sh
-cargo install dioxus-cli --version 0.7.10 --locked   # once
-scripts/dev.sh            # start termden under `dx serve --hot-patch`
+scripts/dev.sh            # build and start termden, or focus it (launcher entry)
+cargo build -p termden    # after editing: builds termden + termdenctl
 ```
 
-`dev.sh` runs termden under Subsecond hot-patching, in the background (log in
-`$XDG_STATE_HOME/termden/dx.log`; point your launcher at it). Saving a source
-file patches the running app in a second or so: the window and every tile
-stay. Edits that cannot be patched (struct fields, startup code,
-`termden-core`) make dx rebuild and relaunch termden; harnesses live in tmux
-and reattach, including the agent editing the code. The first build takes
-several minutes and keeps its own artifacts under `target/`.
-
-Without dx, run a plain build (`cargo build -p termden &&
-target/debug/termden`): it watches its own binary and execs into each rebuild,
-closing the window briefly. `ctrl+shift+r` reloads by hand.
+A running termden notices when a build replaces its binary and shows
+**New build ready · Restart** in the sidebar. It never restarts by itself:
+click Restart (or ctrl+shift+r) when it suits you. Restarting saves state,
+detaches from tmux and execs the new build, so every harness, including the
+agent editing the code, survives. Agents' `termdenctl reload` only offers the
+restart.
 
 `termdenctl` talks to the running app over `$XDG_RUNTIME_DIR/termden/app.sock`.
 Every harness has it on `PATH` and knows its own id (`$TERMDEN_HARNESS`, or
@@ -112,7 +107,7 @@ termdenctl screenshot --live          # grim grab of the real window
 termdenctl theme | reload | ping
 ```
 
-Build errors land in `dx.log`. Agents can drive and read
+Agents can drive and read
 tiles but cannot move, resize or zoom them; layout is yours.
 
 ### Shortcuts (ctrl+shift + …)
@@ -126,7 +121,7 @@ tiles but cannot move, resize or zoom them; layout is yours.
 | `PgUp` / `PgDn` | previous / next workspace |
 | `V` | paste (drag in a tile selects; release copies) |
 | `+` `-` `0` | terminal text size |
-| `R` | reload termden |
+| `R` | restart termden (into a new build, when the banner offers one) |
 
 Drag a tile header to split or swap; drag the gap between tiles to resize.
 Enter on an exited tile restarts it.

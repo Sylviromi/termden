@@ -10,10 +10,9 @@ use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::time::Duration;
 
 use alacritty_terminal::term::TermMode;
-use gpui::{Context, Keystroke, Timer};
+use gpui::{Context, Keystroke};
 use serde_json::json;
 use termden_core::state::control_socket;
 use termden_core::{HarnessId, HarnessKind, WorkspaceId};
@@ -57,7 +56,7 @@ pub fn listen(cx: &mut Context<TermdenApp>) {
         while let Ok((line, reply)) = rx.recv().await {
             let out = this
                 .update(cx, |this, cx| {
-                    let out = hot!(TermdenApp::command, this, line.as_str(), cx);
+                    let out = this.command(line.as_str(), cx);
                     cx.notify();
                     out
                 })
@@ -118,7 +117,8 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   log <h|0> <text>           post a line to the activity feed
   settings [close|themes]    open (or close) the settings popup; `themes` opens the theme browser
   theme [id|list]            set a colour theme, list them, or cycle to the next
-  reload                     save, detach, re-exec (harnesses keep running)";
+  reload                     offer the user a restart (sidebar banner); termden never
+                             restarts unasked, the user confirms";
 
 impl TermdenApp {
     /// A harness by id, else by name (the active workspace wins ties).
@@ -424,13 +424,9 @@ impl TermdenApp {
             },
             "update" => self.apply_update(cx),
             "reload" => {
-                // Reply first, then exec.
-                cx.spawn(async move |this, cx| {
-                    Timer::after(Duration::from_millis(100)).await;
-                    let _ = this.update(cx, |this, _| this.reload());
-                })
-                .detach();
-                "reloading".into()
+                // Agents may not restart termden under the user; ask instead.
+                self.request_restart("Restart requested");
+                "restart offered to the user (sidebar banner)".into()
             }
             _ => HELP.into(),
         }
