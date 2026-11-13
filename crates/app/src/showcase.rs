@@ -219,9 +219,10 @@ fn gallery(app: &TermdenApp, s: &Showcase) -> String {
 const SHOW_CSS: &str = "<style>
 .all{color:var(--subtext);text-decoration:none;font-size:.82rem;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:8px;padding:.35rem .9rem}
 .all:hover{color:var(--text);border-color:var(--accent)}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.1rem}
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}
+@media (max-width:900px){.gallery{grid-template-columns:1fr}}
 figure{margin:0;background:var(--mantle);border:1.5px solid color-mix(in srgb,var(--text) 9%,transparent);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
-.media{display:flex;align-items:center;justify-content:center;background:var(--crust);aspect-ratio:4/3;max-height:60vh}
+.media{display:flex;align-items:center;justify-content:center;background:var(--crust);aspect-ratio:16/10;max-height:75vh}
 .media img,.media video{width:100%;height:100%;object-fit:contain}
 a.media:hover{outline:2px solid var(--accent);outline-offset:-2px}
 .media.audio{aspect-ratio:auto;padding:1.4rem}
