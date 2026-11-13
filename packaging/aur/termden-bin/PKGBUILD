@@ -1,7 +1,7 @@
 # Maintainer: Sylviromi <https://github.com/Sylviromi>
 # Prebuilt release binary. Bump pkgver and run `updpkgsums` after each release.
 pkgname=termden-bin
-pkgver=0.1.6
+pkgver=0.1.7
 pkgrel=1
 pkgdesc="Workspaces and tiled terminals for coding agents (Claude Code, opencode, pi)"
 arch=('x86_64')
@@ -15,7 +15,7 @@ optdepends=('claude-code: Claude Code agent tiles'
 provides=('termden')
 conflicts=('termden')
 source=("termden-$pkgver.tar.gz::$url/releases/download/v$pkgver/termden-x86_64-linux.tar.gz")
-sha256sums=('5071e7b2d6696e346be6837c565fb1da50ab5cdf1c44977ccbd14c03319d1865')
+sha256sums=('3f23f43a6e3ade6c264bd171ac4efb064e335d4b2a9d755babfce8c5de53d741')
 
 package() {
     cd termden
