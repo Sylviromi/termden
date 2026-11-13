@@ -57,7 +57,7 @@ pub fn listen(cx: &mut Context<TermdenApp>) {
         while let Ok((line, reply)) = rx.recv().await {
             let out = this
                 .update(cx, |this, cx| {
-                    let out = this.command(&line, cx);
+                    let out = hot!(TermdenApp::command, this, line.as_str(), cx);
                     cx.notify();
                     out
                 })

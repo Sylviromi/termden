@@ -55,7 +55,7 @@ pub fn command(id: HarnessId, name: &str, kind: HarnessKind) -> String {
 fn write_config(id: HarnessId, name: &str, kind: HarnessKind) -> Option<String> {
     let dir: PathBuf = runtime_dir().join("harness").join(id.raw().to_string());
     fs::create_dir_all(&dir).ok()?;
-    let ctl = std::env::current_exe().ok()?.with_file_name("termdenctl");
+    let ctl = crate::pty::bin_dir()?.join("termdenctl");
     let env = json!({
         "TERMDEN_HARNESS": id.raw().to_string(),
         "TERMDEN_CONTROL_SOCKET": control_socket(),

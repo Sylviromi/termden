@@ -126,14 +126,22 @@ fn push_session_env(args: &mut Vec<String>, id: HarnessId, command: Option<&str>
     ));
     // The PATH the user's interactive shell would give (agents run without
     // a shell), with our own bin dir first so `termdenctl` is always there.
-    let own = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| format!("{}:", dir.display())))
+    let own = bin_dir()
+        .map(|dir| format!("{}:", dir.display()))
         .unwrap_or_default();
     args.push("-e".into());
     args.push(format!("PATH={own}{}", user_path()));
     if let Some(command) = command {
         args.push(command.into());
+    }
+}
+
+/// Where `termdenctl` lives: next to our binary, unless `TERMDEN_BIN_DIR`
+/// says otherwise (`dx serve` builds termden into its own directory).
+pub fn bin_dir() -> Option<std::path::PathBuf> {
+    match std::env::var_os("TERMDEN_BIN_DIR") {
+        Some(dir) if !dir.is_empty() => Some(dir.into()),
+        _ => Some(std::env::current_exe().ok()?.parent()?.to_path_buf()),
     }
 }
 

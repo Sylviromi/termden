@@ -503,6 +503,10 @@ impl TermdenApp {
     /// Called about once a second: a successful `cargo build` replaced our
     /// binary, so reload into it.
     pub fn check_rebuilt(&mut self) {
+        // Under `dx serve`, dx patches or relaunches us itself.
+        if cfg!(feature = "hotpatch") {
+            return;
+        }
         let Some((path, mtime)) = &self.exe else {
             return;
         };
@@ -521,6 +525,17 @@ impl TermdenApp {
     /// Hot reload: save, detach every tmux client, exec the current binary.
     /// Harnesses keep running in tmux and are reattached by the new process.
     pub fn reload(&mut self) {
+        // Under `dx serve` (scripts/dev.sh) the binary on disk lacks the
+        // patches; ask dx for a full rebuild and relaunch with its `r` key.
+        if cfg!(feature = "hotpatch") {
+            self.save();
+            let _ = std::process::Command::new("tmux")
+                .args(["-L", &crate::pty::tmux_socket()])
+                .args(["send-keys", "-t", "termden-dx", "r"])
+                .status();
+            self.log("Termden", "full rebuild requested".into(), 0);
+            return;
+        }
         let Some(path) = self
             .exe
             .as_ref()

@@ -197,7 +197,7 @@ pub fn listen(cx: &mut Context<TermdenApp>) {
         while let Ok((method, path, reply)) = rx.recv().await {
             let out = this
                 .update(cx, |this, cx| {
-                    let out = this.route(&method, &path);
+                    let out = hot!(TermdenApp::route, this, method.as_str(), path.as_str());
                     cx.notify();
                     out
                 })

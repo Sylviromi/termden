@@ -134,16 +134,7 @@ impl TermdenApp {
         cx.spawn(async move |this, cx| {
             loop {
                 Timer::after(Duration::from_millis(120)).await;
-                let updated = this.update(cx, |this, cx| {
-                    this.tick = this.tick.wrapping_add(1);
-                    this.sync_sessions(cx);
-                    this.refresh_statuses();
-                    this.notify_mail(cx);
-                    if this.tick % 8 == 0 {
-                        this.check_rebuilt();
-                    }
-                    cx.notify();
-                });
+                let updated = this.update(cx, |this, cx| hot!(Self::on_tick, this, cx));
                 if updated.is_err() {
                     break;
                 }
@@ -1025,6 +1016,24 @@ impl TermdenApp {
 
 impl Render for TermdenApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        hot!(Self::render_body, self, window, cx)
+    }
+}
+
+impl TermdenApp {
+    /// The 120ms frame tick: spinners, statuses, mail, rebuild check.
+    fn on_tick(&mut self, cx: &mut Context<Self>) {
+        self.tick = self.tick.wrapping_add(1);
+        self.sync_sessions(cx);
+        self.refresh_statuses();
+        self.notify_mail(cx);
+        if self.tick % 8 == 0 {
+            self.check_rebuilt();
+        }
+        cx.notify();
+    }
+
+    fn render_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.measure(window);
         self.sync_sessions(cx);
         let gap = self.config.gap;
@@ -1118,6 +1127,7 @@ impl Render for TermdenApp {
             .children(self.hover_url_element())
             .children(crate::settings::render(self, cx))
             .children(ghost)
+            .into_any_element()
     }
 }
 

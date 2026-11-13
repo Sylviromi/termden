@@ -47,13 +47,21 @@ Source builds never self-update (rebuild instead; see below).
 ## Developing termden inside termden
 
 ```sh
-scripts/dev.sh            # in a termden shell tile: rebuild on every save
-scripts/dev.sh --launch   # same, and start termden if it is not running
+cargo install dioxus-cli --version 0.7.10 --locked   # once
+scripts/dev.sh            # start termden under `dx serve --hot-patch`
 ```
 
-A running termden watches its own binary. When a build replaces it, termden
-saves state, detaches from tmux and execs the new build, so every harness
-(including the agent editing the code) survives. `ctrl+shift+r` reloads by hand.
+`dev.sh` runs termden under Subsecond hot-patching, in the background (log in
+`$XDG_STATE_HOME/termden/dx.log`; point your launcher at it). Saving a source
+file patches the running app in a second or so: the window and every tile
+stay. Edits that cannot be patched (struct fields, startup code,
+`termden-core`) make dx rebuild and relaunch termden; harnesses live in tmux
+and reattach, including the agent editing the code. The first build takes
+several minutes and keeps its own artifacts under `target/`.
+
+Without dx, run a plain build (`cargo build -p termden-app -p termden-cli &&
+target/debug/termden`): it watches its own binary and execs into each rebuild,
+closing the window briefly. `ctrl+shift+r` reloads by hand.
 
 `termdenctl` talks to the running app over `$XDG_RUNTIME_DIR/termden/app.sock`.
 Every harness has it on `PATH` and knows its own id (`$TERMDEN_HARNESS`, or
@@ -74,7 +82,7 @@ termdenctl screenshot --live          # grim grab of the real window
 termdenctl theme | reload | ping
 ```
 
-`dev.sh` posts failed builds to the activity feed. Agents can drive and read
+Build errors land in `dx.log`. Agents can drive and read
 tiles but cannot move, resize or zoom them; layout is yours.
 
 ### Shortcuts (ctrl+shift + …)
@@ -104,7 +112,7 @@ git tag v0.2.0 && git push origin v0.2.0
 `.github/workflows/release.yml` tests, builds a release binary on Ubuntu 22.04
 and publishes `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
 
-`dev.sh` needs `inotify-tools`.
+
 
 ## Headless screenshots
 

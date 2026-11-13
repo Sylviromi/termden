@@ -20,9 +20,16 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
 `$TERMDEN_HARNESS` is your harness id (`self` in commands), and
 `termdenctl help` lists everything. The loop:
 
-1. Edit code. `cargo build -p termden-app -p termden-cli` (or `scripts/dev.sh`
-   in a shell tile) replaces the binary; the running app reloads itself in
-   about a second. Your own process survives: it lives in tmux.
+1. Edit code. When termden runs under `scripts/dev.sh` (`dx serve
+   --hot-patch`), saving the file is enough: function bodies are patched into
+   the running app within seconds, no restart. Struct fields, startup code and
+   `termden-core` make dx rebuild and relaunch it (tiles reattach); errors go
+   to `$XDG_STATE_HOME/termden/dx.log`. A plain `target/debug/termden` instead
+   reloads when `cargo build -p termden-app -p termden-cli` replaces it.
+   Either way your own process survives: it lives in tmux. Build
+   `termden-cli` yourself after changing it; dx only serves the app.
+   Long-lived tasks reach code through `hot!(...)` (main.rs) so patches apply
+   there too; use it for any new background loop or socket handler.
 2. Check the result without touching the desktop:
    `termdenctl screenshot target/now.png` (headless mirror of the live app),
    `termdenctl state`, `termdenctl screen <h>`, `termdenctl history <h> 300`.
@@ -68,7 +75,7 @@ cargo check --workspace
 cargo fmt
 cargo build -p termden-app
 
-scripts/dev.sh                    # rebuild on save; live app reloads itself
+scripts/dev.sh                    # termden under dx serve --hot-patch
 termdenctl state|screen [h]|add <kind>|reload|screenshot [out.png]
 
 # Headless render + capture; touches no real display:
