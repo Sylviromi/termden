@@ -18,7 +18,8 @@ pub mod icons {
     pub const REFRESH: &str = "\u{e5d5}";
     pub const FULLSCREEN_EXIT: &str = "\u{e5d1}";
     pub const EXPAND_MORE: &str = "\u{e5cf}";
-    pub const CHEVRON_RIGHT: &str = "\u{e5e0}";
+    pub const CHEVRON_RIGHT: &str = "\u{e5cc}";
+    pub const CHEVRON_LEFT: &str = "\u{e5cb}";
     pub const TERMINAL: &str = "\u{eb8e}";
     pub const MINIMIZE: &str = "\u{e931}";
     pub const MAXIMIZE: &str = "\u{e3c1}";

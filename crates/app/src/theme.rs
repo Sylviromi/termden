@@ -290,6 +290,28 @@ fn derive(def: &ThemeDef) -> Palette {
     }
 }
 
+/// The theme before `id` (wrapping).
+pub fn prev_id(id: &str) -> &'static str {
+    let i = THEMES.iter().position(|t| t.id == id).unwrap_or(0);
+    THEMES[(i + THEMES.len() - 1) % THEMES.len()].id
+}
+
+/// Themes the settings browser lists: the Dark or Light tab, or, while a
+/// filter is typed, every theme whose name contains it.
+pub fn browse(dark: bool, filter: &str) -> Vec<&'static ThemeDef> {
+    let filter = filter.to_lowercase();
+    THEMES
+        .iter()
+        .filter(|t| {
+            if filter.is_empty() {
+                t.dark == dark
+            } else {
+                t.name.to_lowercase().contains(&filter) || t.id.contains(&filter)
+            }
+        })
+        .collect()
+}
+
 fn mix(a: Hsla, b: Hsla, t: f32) -> Hsla {
     let (a, b) = (Rgba::from(a), Rgba::from(b));
     let m = |x: f32, y: f32| x + (y - x) * t;
@@ -369,5 +391,16 @@ mod tests {
             id = next_id(id);
         }
         assert_eq!(id, all()[0].id, "cycling visits every theme once");
+        assert_eq!(prev_id(next_id("nord")), "nord");
+    }
+
+    #[test]
+    fn browse_filters_by_tab_then_by_name() {
+        assert!(browse(true, "").iter().all(|t| t.dark));
+        assert!(browse(false, "").iter().all(|t| !t.dark));
+        // A filter searches both tabs, by name or id.
+        let gruvbox: Vec<_> = browse(true, "GRU").iter().map(|t| t.id).collect();
+        assert!(gruvbox.contains(&"gruvbox-dark") && gruvbox.contains(&"gruvbox-light"));
+        assert!(browse(true, "zzz").is_empty());
     }
 }

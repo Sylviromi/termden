@@ -107,6 +107,9 @@ pub struct TermdenApp {
     /// Dragging the edge of the left panel.
     pub panel_resizing: bool,
     pub settings_open: bool,
+    /// Theme chooser in settings (`None` = collapsed to one row).
+    pub theme_browser: Option<crate::settings::ThemeBrowser>,
+    pub theme_scroll: ScrollHandle,
     pub popups: [crate::popup::PopupPos; 1],
     /// Questions agents asked the user, answered in the browser (`choices.rs`).
     pub choices: Vec<termden_core::Choice>,
@@ -203,6 +206,8 @@ impl TermdenApp {
             resizing_extra: Vec::new(),
             panel_resizing: false,
             settings_open: false,
+            theme_browser: None,
+            theme_scroll: ScrollHandle::new(),
             popups: Default::default(),
             choices: state.choices,
             showcases: state.showcases,
@@ -491,7 +496,9 @@ impl TermdenApp {
         let keystroke = &event.keystroke;
         let m = &keystroke.modifiers;
         if self.settings_open {
-            if keystroke.key == "escape" {
+            if self.theme_browser.is_some() {
+                self.theme_browser_key(keystroke);
+            } else if keystroke.key == "escape" {
                 self.settings_open = false;
             }
             return true;
@@ -884,6 +891,48 @@ impl TermdenApp {
                 .into_any_element()
         })
         .collect()
+    }
+
+    /// Keys while the theme browser is open: type to filter, arrows preview,
+    /// Enter keeps, Tab flips Dark/Light, Esc clears the filter then closes.
+    fn theme_browser_key(&mut self, keystroke: &gpui::Keystroke) {
+        let Some(browser) = self.theme_browser.as_mut() else {
+            return;
+        };
+        match keystroke.key.as_str() {
+            "escape" if !browser.filter.is_empty() => browser.filter.clear(),
+            "escape" | "enter" => self.theme_browser = None,
+            "backspace" => {
+                browser.filter.pop();
+            }
+            "tab" => {
+                browser.dark = !browser.dark;
+                browser.filter.clear();
+            }
+            "up" | "down" => {
+                let list = crate::theme::browse(browser.dark, &browser.filter);
+                if list.is_empty() {
+                    return;
+                }
+                let current = list.iter().position(|t| t.id == self.config.theme.0);
+                let next = match (current, keystroke.key.as_str()) {
+                    (None, _) => 0,
+                    (Some(i), "up") => (i + list.len() - 1) % list.len(),
+                    (Some(i), _) => (i + 1) % list.len(),
+                };
+                self.set_theme(list[next].id);
+                self.theme_scroll.scroll_to_item(next);
+            }
+            _ => {
+                if let Some(ch) = keystroke.key_char.as_deref()
+                    && !keystroke.modifiers.control
+                    && !keystroke.modifiers.platform
+                    && ch.chars().all(|c| !c.is_control())
+                {
+                    browser.filter.push_str(&ch.to_lowercase());
+                }
+            }
+        }
     }
 
     pub fn cycle_theme(&mut self) {

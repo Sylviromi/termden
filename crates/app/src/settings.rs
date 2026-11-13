@@ -79,10 +79,15 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .flex()
                             .flex_col()
                             .gap(px(14.))
+                            .child(row("Theme", theme).child(theme_stepper(app, cx)))
+                            .children(
+                                app.theme_browser
+                                    .as_ref()
+                                    .map(|b| theme_browser(app, b, cx)),
+                            )
                             .child(row("Text size", theme).child(font_stepper(app, cx)))
                             .child(row("Title bar", theme).child(title_bar_choices(app, cx))),
                     ))
-                    .child(section("THEMES", theme, theme_choices(app, cx)))
                     .child(section(
                         "SHORTCUTS · CTRL+SHIFT +",
                         theme,
@@ -148,92 +153,6 @@ fn row(label: &'static str, theme: &Theme) -> gpui::Div {
                 .text_color(theme.text)
                 .child(label),
         )
-}
-
-fn theme_choices(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
-    let theme = &app.theme;
-    let group = |dark: bool, cx: &mut Context<TermdenApp>| {
-        div()
-            .flex()
-            .flex_col()
-            .gap(px(8.))
-            .child(
-                div()
-                    .text_size(theme.ui(9.5))
-                    .text_color(theme.overlay)
-                    .child(if dark { "Dark" } else { "Light" }),
-            )
-            .child(
-                div().flex().flex_wrap().gap(px(8.)).children(
-                    crate::theme::all()
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, def)| def.dark == dark)
-                        .map(|(index, def)| theme_card(app, index, def.id, def.name, cx)),
-                ),
-            )
-    };
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(14.))
-        .child(group(true, cx))
-        .child(group(false, cx))
-        .into_any_element()
-}
-
-/// One theme: its background with five accent dots, and its name.
-fn theme_card(
-    app: &TermdenApp,
-    index: usize,
-    id: &'static str,
-    name: &'static str,
-    cx: &mut Context<TermdenApp>,
-) -> AnyElement {
-    let theme = &app.theme;
-    let preview = Theme::for_id(id, &app.config);
-    // Unknown ids fall back to the default, which then shows as selected.
-    let selected = crate::theme::theme_def(&app.config.theme.0).id == id;
-    let dot = |color| div().size(px(9.)).rounded(px(5.)).bg(color);
-    div()
-        .id(("theme-choice", index))
-        .w(px(152.))
-        .flex()
-        .flex_col()
-        .gap(px(6.))
-        .p(px(8.))
-        .rounded(px(8.))
-        .bg(preview.base)
-        .border_2()
-        .border_color(if selected {
-            theme.accent(0)
-        } else {
-            preview.text.opacity(0.10)
-        })
-        .cursor_pointer()
-        .hover(|style| style.opacity(0.85))
-        .on_click(cx.listener(move |this, _, _, cx| {
-            this.set_theme(id);
-            cx.notify();
-        }))
-        .child(
-            div()
-                .flex()
-                .gap(px(4.))
-                .child(dot(preview.accent(0)))
-                .child(dot(preview.accent(1)))
-                .child(dot(preview.accent(2)))
-                .child(dot(preview.accent(3)))
-                .child(dot(preview.accent(4))),
-        )
-        .child(
-            div()
-                .truncate()
-                .text_size(theme.ui(10.))
-                .text_color(preview.text)
-                .child(name),
-        )
-        .into_any_element()
 }
 
 fn font_stepper(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
@@ -310,6 +229,232 @@ fn title_bar_choices(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyEleme
                         }))
                         .child(choice.label())
                 }),
+        )
+        .into_any_element()
+}
+
+/// Theme chooser state: which tab is shown and what has been typed.
+pub struct ThemeBrowser {
+    pub dark: bool,
+    pub filter: String,
+}
+
+/// `‹ Current theme ›  Browse`: arrows step through every theme live.
+fn theme_stepper(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+    let theme = &app.theme;
+    let current = crate::theme::theme_def(&app.config.theme.0);
+    let open = app.theme_browser.is_some();
+    let step = |id: &'static str, icon, prev: bool, cx: &mut Context<TermdenApp>| {
+        icon_button(id, icon, theme)
+            .size(px(24.))
+            .text_size(theme.ui(14.))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                let id = &this.config.theme.0;
+                let next = if prev {
+                    crate::theme::prev_id(id)
+                } else {
+                    crate::theme::next_id(id)
+                };
+                this.set_theme(next);
+                cx.notify();
+            }))
+    };
+    div()
+        .flex()
+        .items_center()
+        .gap(px(4.))
+        .child(step("theme-prev", icons::CHEVRON_LEFT, true, cx))
+        .child(
+            div()
+                .w(px(150.))
+                .flex()
+                .justify_center()
+                .truncate()
+                .text_size(theme.ui(11.))
+                .text_color(theme.text)
+                .child(current.name),
+        )
+        .child(step("theme-next", icons::CHEVRON_RIGHT, false, cx))
+        .child(
+            div()
+                .id("theme-browse")
+                .ml(px(6.))
+                .px(px(10.))
+                .h(px(26.))
+                .flex()
+                .items_center()
+                .rounded(px(7.))
+                .border_1()
+                .border_color(if open {
+                    theme.accent(0)
+                } else {
+                    theme.text.opacity(0.10)
+                })
+                .text_size(theme.ui(10.5))
+                .text_color(theme.subtext)
+                .cursor_pointer()
+                .hover(|style| style.bg(theme.surface0))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.theme_browser = match this.theme_browser {
+                        Some(_) => None,
+                        None => Some(ThemeBrowser {
+                            dark: crate::theme::theme_def(&this.config.theme.0).dark,
+                            filter: String::new(),
+                        }),
+                    };
+                    cx.notify();
+                }))
+                .child(if open { "Close" } else { "Browse" }),
+        )
+        .into_any_element()
+}
+
+/// Dark/Light tabs, the typed filter, and a short scrolling list of themes.
+fn theme_browser(
+    app: &TermdenApp,
+    browser: &ThemeBrowser,
+    cx: &mut Context<TermdenApp>,
+) -> AnyElement {
+    let theme = &app.theme;
+    let list = crate::theme::browse(browser.dark, &browser.filter);
+    let filtering = !browser.filter.is_empty();
+    let tab = |dark: bool, cx: &mut Context<TermdenApp>| {
+        let active = !filtering && browser.dark == dark;
+        let count = crate::theme::all()
+            .iter()
+            .filter(|t| t.dark == dark)
+            .count();
+        div()
+            .id(if dark { "tab-dark" } else { "tab-light" })
+            .px(px(10.))
+            .h(px(24.))
+            .flex()
+            .items_center()
+            .rounded(px(6.))
+            .text_size(theme.ui(10.))
+            .text_color(if active { theme.text } else { theme.overlay })
+            .when(active, |d| d.bg(theme.surface0))
+            .cursor_pointer()
+            .hover(|style| style.text_color(theme.text))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if let Some(b) = this.theme_browser.as_mut() {
+                    b.dark = dark;
+                    b.filter.clear();
+                }
+                cx.notify();
+            }))
+            .child(format!("{} {count}", if dark { "Dark" } else { "Light" }))
+    };
+    let rows: Vec<_> = list
+        .iter()
+        .enumerate()
+        .map(|(i, def)| {
+            let preview = Theme::for_id(def.id, &app.config);
+            let selected = crate::theme::theme_def(&app.config.theme.0).id == def.id;
+            let id = def.id;
+            let dot = |color| div().size(px(8.)).rounded(px(4.)).bg(color);
+            div()
+                .id(("theme-row", i))
+                .flex_shrink_0()
+                .h(px(30.))
+                .px(px(8.))
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .rounded(px(7.))
+                .border_1()
+                .border_color(if selected {
+                    theme.accent(0)
+                } else {
+                    theme.text.opacity(0.0)
+                })
+                .when(selected, |d| d.bg(theme.accent(0).opacity(0.10)))
+                .cursor_pointer()
+                .hover(|style| style.bg(theme.surface0))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.set_theme(id);
+                    cx.notify();
+                }))
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .gap(px(3.))
+                        .px(px(6.))
+                        .h(px(18.))
+                        .rounded(px(5.))
+                        .bg(preview.base)
+                        .border_1()
+                        .border_color(preview.text.opacity(0.15))
+                        .child(dot(preview.accent(0)))
+                        .child(dot(preview.accent(1)))
+                        .child(dot(preview.accent(2)))
+                        .child(dot(preview.accent(3))),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .truncate()
+                        .text_size(theme.ui(10.5))
+                        .text_color(theme.text)
+                        .child(def.name),
+                )
+        })
+        .collect();
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(8.))
+        .p(px(10.))
+        .rounded(px(9.))
+        .bg(theme.crust.opacity(0.5))
+        .border_1()
+        .border_color(theme.text.opacity(0.06))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(4.))
+                .child(tab(true, cx))
+                .child(tab(false, cx))
+                .child(div().flex_1())
+                .child(
+                    div()
+                        .text_size(theme.ui(10.))
+                        .text_color(if filtering { theme.text } else { theme.overlay })
+                        .child(if filtering {
+                            format!("filter: {}▏", browser.filter)
+                        } else {
+                            "type to filter".into()
+                        }),
+                ),
+        )
+        .child(
+            div()
+                .id("theme-list")
+                .max_h(px(216.))
+                .overflow_y_scroll()
+                .track_scroll(&app.theme_scroll)
+                .flex()
+                .flex_col()
+                .gap(px(2.))
+                .children(rows)
+                .when(list.is_empty(), |d| {
+                    d.child(
+                        div()
+                            .p(px(8.))
+                            .text_size(theme.ui(10.5))
+                            .text_color(theme.overlay)
+                            .child("No theme matches"),
+                    )
+                }),
+        )
+        .child(
+            div()
+                .text_size(theme.ui(9.5))
+                .text_color(theme.overlay)
+                .child("↑↓ preview · Enter keep · Tab dark/light · Esc close"),
         )
         .into_any_element()
 }
