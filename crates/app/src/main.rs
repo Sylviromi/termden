@@ -13,6 +13,7 @@ mod state;
 mod terminal;
 mod theme;
 mod tile;
+mod update;
 mod widgets;
 
 use gpui::{
@@ -22,6 +23,10 @@ use gpui::{
 use termden_core::Config;
 
 fn main() {
+    if std::env::args().any(|arg| arg == "--version") {
+        println!("termden {}", update::VERSION);
+        return;
+    }
     let config = Config::load();
     let mode = if std::env::args().any(|arg| arg == "--demo") {
         state::Mode::Demo
@@ -30,6 +35,16 @@ fn main() {
     } else {
         state::Mode::Live
     };
+    // A second launch (app launcher, shell) focuses the running window instead.
+    if mode == state::Mode::Live
+        && std::env::var_os("TERMDEN_RELOADED").is_none()
+        && std::os::unix::net::UnixStream::connect(termden_core::state::control_socket()).is_ok()
+    {
+        let _ = std::process::Command::new("hyprctl")
+            .args(["-q", "dispatch", "focuswindow", "class:termden"])
+            .status();
+        return;
+    }
 
     Application::new().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);

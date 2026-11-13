@@ -16,17 +16,33 @@ server (`tmux -L termden`, session `td-<harness id>`) and is rendered through
 reattaches. Workspaces, layouts and focus persist in
 `$XDG_STATE_HOME/termden/state.json`. The mock fleet lives behind `--demo`.
 
-## Run
+## Install
 
 ```sh
-git clone <this repo> termden && cd termden
+curl -fsSL https://raw.githubusercontent.com/Sylviromi/termden/main/scripts/install.sh | sh
+```
+
+Installs `termden` and `termdenctl` into `~/.local/bin`, plus a launcher entry
+and icon; no root and no Rust toolchain. Linux x86_64 (Wayland or X11, glibc
+2.35+). It also needs `tmux`, a Vulkan driver, `xdg-open`, and the fonts `Noto Sans`,
+`JetBrainsMono Nerd Font` and "Material Symbols Rounded"; the installer lists
+whatever is missing. `sh install.sh --uninstall` removes it again.
+
+**Updates:** termden checks GitHub for a new release every few hours. When one
+is out, the sidebar footer shows **Update to vX.Y.Z**; click it (or run
+`termdenctl update`). The new binary is swapped in and termden reloads itself
+in place, and every tile keeps running. Re-running the installer works too.
+Launching termden again while it runs focuses the existing window (Hyprland).
+
+## Build from source
+
+```sh
+git clone https://github.com/Sylviromi/termden && cd termden
 git config core.hooksPath scripts/git-hooks   # agent-commit sign-off hook
 cargo run -p termden-app
 ```
 
-Linux only (Wayland or X11). Requires `tmux`, a working Vulkan driver, `xdg-open`,
-and the fonts named in the config (`Noto Sans`, `JetBrainsMono Nerd Font`)
-plus "Material Symbols Rounded" for icons.
+Source builds never self-update (rebuild instead; see below).
 
 ## Developing termden inside termden
 
@@ -77,18 +93,18 @@ tiles but cannot move, resize or zoom them; layout is yours.
 Drag a tile header to split or swap; drag the gap between tiles to resize.
 Enter on an exited tile restarts it.
 
-### App launcher
+### Releasing
+
+Bump `version` in the root `Cargo.toml`, commit, then tag and push:
 
 ```sh
-install -Dm644 assets/termden.desktop ~/.local/share/applications/termden.desktop
-install -Dm644 assets/termden.svg ~/.local/share/icons/hicolor/scalable/apps/termden.svg
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
-The entry runs `scripts/launch.sh`: it focuses a running termden (Hyprland),
-otherwise starts the dev build, which reloads itself on every rebuild.
+`.github/workflows/release.yml` tests, builds a release binary on Ubuntu 22.04
+and publishes `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
 
-Requires `tmux`, `inotify-tools` for `dev.sh`, a working Vulkan driver, Wayland or X11, and the fonts named in the
-config (`Noto Sans`, `JetBrainsMono Nerd Font` by default).
+`dev.sh` needs `inotify-tools`.
 
 ## Headless screenshots
 

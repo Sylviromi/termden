@@ -30,7 +30,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
         .child(activity(app))
-        .child(footer(app))
+        .child(footer(app, cx))
         .into_any_element()
 }
 
@@ -872,7 +872,7 @@ fn subagent_rows(harness: &Harness, theme: &Theme, tick: u64) -> Option<Div> {
     )
 }
 
-fn footer(app: &TermdenApp) -> AnyElement {
+fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
     let working = app.working_count();
     let total = app.harness_count();
@@ -903,6 +903,28 @@ fn footer(app: &TermdenApp) -> AnyElement {
                     if total == 1 { "" } else { "es" }
                 )),
         )
+        .children(app.update_available.as_ref().map(|tag| {
+            div()
+                .id("update")
+                .ml_auto()
+                .px(px(8.))
+                .py(px(3.))
+                .rounded(px(6.))
+                .bg(theme.green.opacity(0.14))
+                .text_size(theme.ui(9.5))
+                .text_color(theme.green)
+                .cursor_pointer()
+                .hover(|s| s.bg(theme.green.opacity(0.24)))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.apply_update(cx);
+                    cx.notify();
+                }))
+                .child(if app.updating {
+                    format!("Updating to {tag}…")
+                } else {
+                    format!("Update to {tag}")
+                })
+        }))
         .into_any_element()
 }
 

@@ -108,6 +108,9 @@ pub struct TermdenApp {
     mouse_press: Option<(HarnessId, u8, (u16, u16))>,
     /// Link under the pointer while ctrl is held: (tile, row, start col, cells).
     hover_url: Option<(HarnessId, u16, u16, u16)>,
+    /// Newer release tag offered in the footer (`update.rs`).
+    pub update_available: Option<String>,
+    pub updating: bool,
     scroll_lines: f32,
     /// Our own binary and its mtime at startup, for reload-on-rebuild.
     pub(crate) exe: Option<(PathBuf, SystemTime)>,
@@ -151,6 +154,7 @@ impl TermdenApp {
         if mode == Mode::Live {
             control::listen(cx);
             crate::choices::listen(cx);
+            Self::watch_updates(cx);
         }
         // Warm the interactive-shell PATH probe before the first agent spawns.
         std::thread::spawn(|| pty::user_path());
@@ -198,6 +202,8 @@ impl TermdenApp {
             cell: (7.2, 19.0),
             mouse_press: None,
             hover_url: None,
+            update_available: None,
+            updating: false,
             scroll_lines: 0.0,
             exe,
             started: Instant::now(),

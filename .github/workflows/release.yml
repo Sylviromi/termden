@@ -1,0 +1,47 @@
+# Push a tag like v0.2.0 (matching the workspace version) to publish a
+# release. Running apps offer it in their footer; `install.sh` fetches it.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    # Oldest supported runner: the binary then runs on glibc >= 2.35.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the workspace version
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != v$version"; exit 1; }
+
+      - name: Build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config clang libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev \
+            libxcb1-dev libx11-xcb-dev libzstd-dev libssl-dev libasound2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo test --workspace
+      - run: cargo build --release -p termden-app -p termden-cli
+
+      - name: Package
+        run: |
+          mkdir -p dist/termden
+          cp target/release/termden target/release/termdenctl dist/termden/
+          cp assets/termden.desktop assets/termden.svg LICENSE dist/termden/
+          tar -C dist -czf termden-x86_64-linux.tar.gz termden
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" termden-x86_64-linux.tar.gz --generate-notes

@@ -105,11 +105,15 @@ crates/app/                GPUI binary `termden`
   choices.rs               ask_user_choice: localhost picker page (token URL,
                            theme colours), pick mailed back; sidebar banner
   launch.rs                per-harness claude/opencode config (MCP + prompt)
+  update.rs                GitHub release check, footer offer, binary swap
+                           (installed copies only; reload does the rest)
   widgets.rs               dots, badges, pills, spinner, icon buttons
 crates/daemon/              bin `termdend` (stub)
 crates/cli/                 bin `termdenctl` (socket client, screenshot,
                            `mail`, `mcp` stdio server)
 scripts/headless-shot.sh    private Weston compositor + capture
+scripts/install.sh          curl | sh installer for the latest release
+.github/workflows/release.yml  tag v* -> release tarball
 assets/config.example.toml  sample config
 ```
 

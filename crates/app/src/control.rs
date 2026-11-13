@@ -103,6 +103,8 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   choice <json>              ask the user to pick in the browser; prints the page URL
                              {from,title,question,options:[{label,description,image}]}
   rename <h> <name>          rename a harness
+  version                    running version, and a newer release if one is out
+  update                     install the newer release; termden reloads into it
   title <h> [text]           set what a harness is working on (empty clears)
   tag <h> [text]             set a harness role tag (empty clears)
   pronouns <h> [text]        set a harness's pronouns (empty clears)
@@ -376,6 +378,11 @@ impl TermdenApp {
                 self.cycle_theme();
                 format!("{:?}", self.config.theme).to_lowercase()
             }
+            "version" => match &self.update_available {
+                Some(tag) => format!("{} ({tag} available)", crate::update::VERSION),
+                None => crate::update::VERSION.into(),
+            },
+            "update" => self.apply_update(cx),
             "reload" => {
                 // Reply first, then exec.
                 cx.spawn(async move |this, cx| {
