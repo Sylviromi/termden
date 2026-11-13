@@ -1,6 +1,6 @@
 //! The settings popup: theme, text size and the shortcut reference.
 
-use gpui::{AnyElement, Context, FontWeight, div, prelude::*, px};
+use gpui::{AnyElement, Context, FontWeight, Window, div, prelude::*, px};
 use termden_core::TitleBar;
 
 use crate::panel::tip;
@@ -8,7 +8,11 @@ use crate::state::TermdenApp;
 use crate::theme::Theme;
 use crate::widgets::{icon_button, icons};
 
-pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
+pub fn render(
+    app: &TermdenApp,
+    window: &mut Window,
+    cx: &mut Context<TermdenApp>,
+) -> Option<AnyElement> {
     if !app.settings_open && !app.popups[crate::popup::SETTINGS].closing() {
         return None;
     }
@@ -117,7 +121,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
             .flex()
             .h(px(height))
             .child(card.h_full().rounded_tr(px(0.)).rounded_br(px(0.)))
-            .child(theme_panel(app, browser, panel_w, cx)),
+            .child(theme_panel(app, browser, panel_w, window, cx)),
         None => card,
     };
     Some(crate::popup::frame(
@@ -338,6 +342,7 @@ fn theme_panel(
     app: &TermdenApp,
     browser: &ThemeBrowser,
     width: f32,
+    window: &mut Window,
     cx: &mut Context<TermdenApp>,
 ) -> AnyElement {
     let theme = &app.theme;
@@ -348,11 +353,12 @@ fn theme_panel(
             app.theme_scroll.scroll_to_item(row);
             app.theme_scroll_to.set(None);
         } else {
-            cx.notify(); // not laid out yet: try again next frame
+            window.request_animation_frame(); // not laid out yet: next frame
         }
     }
+    // Not cx.notify(): a notify during render is cleared when the frame ends.
     if app.theme_smooth.step(&app.theme_scroll) {
-        cx.notify();
+        window.request_animation_frame();
     }
     let header = |text: &'static str| {
         div()

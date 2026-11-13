@@ -152,7 +152,10 @@ assets/config.example.toml  sample config
 - One 120ms ticker in `state.rs` drives every spinner and cursor blink. Do not
   add per-widget timers or animation loops. Only exception:
   `widgets::SmoothScroll` (activity feed) requests animation frames while a
-  scroll glides, since GPUI 0.2.2 jumps whole wheel steps.
+  scroll glides, since GPUI 0.2.2 jumps whole wheel steps. Ask for the next
+  frame with `window.request_animation_frame()`; a `cx.notify()` during
+  render is cleared when that frame ends, so the animation only advances on
+  unrelated redraws (that made the theme panel glide lag).
 - Palette colors live only in `theme.rs`. Do not hardcode hex values in panel,
   canvas or tile code; add a token instead.
 

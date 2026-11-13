@@ -1300,7 +1300,7 @@ impl TermdenApp {
             )
             .children(self.resize_edges(cx))
             .children(self.hover_url_element())
-            .children(crate::settings::render(self, cx))
+            .children(crate::settings::render(self, window, cx))
             .children(ghost)
             .into_any_element()
     }
