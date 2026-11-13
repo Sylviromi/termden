@@ -198,6 +198,9 @@ Claude Code and opencode tiles started by termden get a `termden` MCP server
   web page in termden's colours. The agent posts the link; Ctrl+click it,
   pick, and the answer is mailed back. The page lives on `127.0.0.1` behind a
   random token kept beside the control socket.
+- `termden_show_results`: shows you what an agent made or captured (images,
+  screenshots, videos, audio, PDFs, files) as a gallery on the same local
+  server, view only. The agent posts the link; `…/r/` lists the last 20 sets.
 
 ## Configuration
 

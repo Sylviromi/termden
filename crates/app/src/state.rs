@@ -110,6 +110,8 @@ pub struct TermdenApp {
     pub popups: [crate::popup::PopupPos; 1],
     /// Questions agents asked the user, answered in the browser (`choices.rs`).
     pub choices: Vec<termden_core::Choice>,
+    /// Results agents shared with the user, newest last (`showcase.rs`).
+    pub showcases: Vec<termden_core::Showcase>,
     /// Absolute tile rects of the active workspace, from the last frame.
     pub tile_rects: Vec<(HarnessId, TRect)>,
     pub viewport: (f32, f32),
@@ -203,6 +205,7 @@ impl TermdenApp {
             settings_open: false,
             popups: Default::default(),
             choices: state.choices,
+            showcases: state.showcases,
             tile_rects: Vec::new(),
             viewport: (0.0, 0.0),
             cell: (7.2, 19.0),

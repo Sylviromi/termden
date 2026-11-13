@@ -47,6 +47,20 @@ fn tools() -> Value {
             }},
         },
         {
+            "name": "termden_show_results",
+            "description": "Show the user what you made or captured (images, screenshots, renders, videos, audio, PDFs, other files) as a gallery on a local web page. View only: nothing comes back. Returns the page URL immediately; post it in your reply with that exact link on its own line (the user Ctrl+clicks it). Use it whenever you produce several visual results or any file the user should look at. Give ABSOLUTE paths to existing files; 1-50 items.",
+            "inputSchema": { "type": "object", "required": ["title", "items"], "properties": {
+                "title": text("what these are, e.g. Generated app icons"),
+                "description": text("optional context for the whole set"),
+                "items": { "type": "array", "minItems": 1, "maxItems": 50, "items": {
+                    "type": "object", "required": ["path"], "properties": {
+                        "path": text("absolute path to the file"),
+                        "caption": text("short title (defaults to the file name)"),
+                        "description": text("optional note on this item"),
+                    }}},
+            }},
+        },
+        {
             "name": "termden_set_title",
             "description": "Set a short title (max 60 chars) saying what you are working on, shown under your name in the sidebar. Set it after your first task and update it when your focus changes.",
             "inputSchema": { "type": "object", "required": ["title"], "properties": {
@@ -123,6 +137,16 @@ fn call(name: &str, args: &Value) -> Result<String, String> {
             let url = request(&format!("choice {body}"))?;
             Ok(format!(
                 "Preview started at {url}\nTell the user in your reply, with that exact link on its own line, that the options are ready to pick there (they Ctrl+click it). Their pick will arrive as mail from `user`; do not wait for it."
+            ))
+        }
+        "termden_show_results" => {
+            let body = json!({
+                "from": me, "title": args["title"], "description": args["description"],
+                "items": args["items"],
+            });
+            let url = request(&format!("show {body}"))?;
+            Ok(format!(
+                "Results page: {url}\nPost that exact link on its own line in your reply so the user can open it (Ctrl+click). Nothing comes back from it."
             ))
         }
         "termden_set_title" => {
@@ -216,7 +240,7 @@ mod tests {
         let init = handle(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}})).unwrap();
         assert_eq!(init["result"]["protocolVersion"], "2025-03-26");
         let list = handle(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list"})).unwrap();
-        assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 9);
+        assert_eq!(list["result"]["tools"].as_array().unwrap().len(), 10);
         assert!(handle(&json!({"jsonrpc":"2.0","method":"notifications/initialized"})).is_none());
     }
 }

@@ -9,7 +9,9 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Activity, Choice, HarnessId, HarnessStatus, LayoutNode, Mail, Workspace, WorkspaceId};
+use crate::{
+    Activity, Choice, HarnessId, HarnessStatus, LayoutNode, Mail, Showcase, Workspace, WorkspaceId,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -21,6 +23,7 @@ pub struct AppState {
     pub mail: Vec<Mail>,
     pub activity: Vec<Activity>,
     pub choices: Vec<Choice>,
+    pub showcases: Vec<Showcase>,
 }
 
 impl AppState {

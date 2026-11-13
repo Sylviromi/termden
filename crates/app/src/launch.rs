@@ -25,7 +25,9 @@ fn prompt(id: HarnessId, name: &str) -> String {
          (design variants, logos, approaches, names) or the user asks you to show them options, \
          call termden_ask_user_choice (2-8 options, images as absolute png/jpg/svg paths); it opens a \
          picker page, so post the link it returns; do not just write files or describe options in text. Their pick \
-         comes back as mail from user. When a line starts with 📬 (a mail preview from termden), call \
+         comes back as mail from user. When you produce images, screenshots, renders, videos or other \
+         files the user should look at, call termden_show_results with their absolute paths and post \
+         the link it returns. When a line starts with 📬 (a mail preview from termden), call \
          termden_read_mail. To start a helper agent run `termdenctl add claude` (or opencode); it \
          prints the new harness id N. Then run `termdenctl wait N 20` (it needs a few seconds \
          before it accepts input), give it its task with `termdenctl send --enter N \"task\"` and \

@@ -105,6 +105,13 @@ impl TermdenApp {
             return Reply::Back; // relative links need the trailing slash
         }
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
+        if parts[0] == "r" && method == "GET" {
+            // Pages link relatively, so they need their trailing slash.
+            if parts.len() <= 2 && !path.ends_with('/') {
+                return Reply::Redirect(format!("{}/", path.trim_start_matches('/')));
+            }
+            return self.showcase_route(&parts);
+        }
         match (method, parts.as_slice()) {
             ("GET", [""]) => Reply::Page(page(self)),
             ("GET", ["img", i]) => i
@@ -139,11 +146,13 @@ fn key(choice: &Choice) -> String {
     format!("{:x}", h.finish())
 }
 
-enum Reply {
+pub(crate) enum Reply {
     Page(String),
     File(PathBuf),
     /// Redirect back to the page after a POST.
     Back,
+    /// Redirect to another path under the token (adds a trailing slash).
+    Redirect(String),
     NotFound,
 }
 
@@ -247,21 +256,40 @@ fn serve(stream: TcpStream, token: &str, tx: async_channel::Sender<Request>) {
         }
         None => Reply::NotFound,
     };
+    let sandbox = matches!(reply, Reply::File(_));
     let (status, kind, body, location) = match reply {
         Reply::Page(html) => ("200 OK", "text/html; charset=utf-8", html.into(), None),
+        // shortcut: files are read whole into memory; stream them if agents
+        // start sharing very large videos.
         Reply::File(path) => match fs::read(&path) {
-            Ok(bytes) => ("200 OK", image_type(&path), bytes, None),
+            Ok(bytes) => ("200 OK", content_type(&path), bytes, None),
             Err(_) => ("404 Not Found", "text/plain", b"not found".to_vec(), None),
         },
-        Reply::Back => ("303 See Other", "text/plain", Vec::new(), Some(token)),
+        Reply::Back => (
+            "303 See Other",
+            "text/plain",
+            Vec::new(),
+            Some(format!("/{token}/")),
+        ),
+        Reply::Redirect(rest) => (
+            "303 See Other",
+            "text/plain",
+            Vec::new(),
+            Some(format!("/{token}/{rest}")),
+        ),
         Reply::NotFound => ("404 Not Found", "text/plain", b"not found".to_vec(), None),
     };
     let mut head = format!(
         "HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n",
         body.len()
     );
-    if let Some(token) = location {
-        head.push_str(&format!("Location: /{token}/\r\n"));
+    if let Some(location) = location {
+        head.push_str(&format!("Location: {location}\r\n"));
+    }
+    if sandbox {
+        // Agent files (an SVG opened full size, say) must not run scripts on
+        // this origin, where they could answer questions.
+        head.push_str("Content-Security-Policy: sandbox\r\n");
     }
     head.push_str("\r\n");
     let mut stream = stream;
@@ -269,22 +297,36 @@ fn serve(stream: TcpStream, token: &str, tx: async_channel::Sender<Request>) {
     let _ = stream.write_all(&body);
 }
 
-fn image_type(path: &std::path::Path) -> &'static str {
+/// Content type served for a file, by extension. Agent-made HTML is sent as
+/// plain text: it must not run scripts on the token-guarded origin.
+pub(crate) fn content_type(path: &std::path::Path) -> &'static str {
     match path
         .extension()
         .and_then(|e| e.to_str())
         .map(str::to_lowercase)
         .as_deref()
     {
+        Some("png") => "image/png",
         Some("svg") => "image/svg+xml",
         Some("jpg" | "jpeg") => "image/jpeg",
         Some("gif") => "image/gif",
         Some("webp") => "image/webp",
-        _ => "image/png",
+        Some("avif") => "image/avif",
+        Some("mp4" | "m4v") => "video/mp4",
+        Some("webm") => "video/webm",
+        Some("mov") => "video/quicktime",
+        Some("mp3") => "audio/mpeg",
+        Some("ogg" | "oga") => "audio/ogg",
+        Some("wav") => "audio/wav",
+        Some("pdf") => "application/pdf",
+        Some("txt" | "md" | "log" | "csv" | "json" | "toml" | "yaml" | "yml" | "html" | "htm") => {
+            "text/plain; charset=utf-8"
+        }
+        _ => "application/octet-stream",
     }
 }
 
-fn esc(text: &str) -> String {
+pub(crate) fn esc(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
@@ -298,7 +340,8 @@ fn hex(color: Hsla) -> String {
 }
 
 /// The picker page for the front question, in the current theme's colours.
-fn page(app: &TermdenApp) -> String {
+/// A full HTML page in the current theme's colours; `head` adds to <head>.
+pub(crate) fn document(app: &TermdenApp, title: &str, head: &str, body: &str) -> String {
     let t = &app.theme;
     let vars = format!(
         ":root{{--crust:{};--mantle:{};--base:{};--surface:{};--overlay:{};--subtext:{};--text:{};--accent:{};--red:{};--green:{};--ui:'{}',system-ui,sans-serif}}",
@@ -314,6 +357,13 @@ fn page(app: &TermdenApp) -> String {
         hex(t.green),
         t.ui_font,
     );
+    format!(
+        "<!DOCTYPE html><html><head><meta charset=utf-8><title>termden · {}</title>{head}<style>{vars}{CSS}</style></head><body>{body}</body></html>",
+        esc(title)
+    )
+}
+
+fn page(app: &TermdenApp) -> String {
     let body = match app.choices.first() {
         None => "<main class=empty><div class=done>✓</div><h2>Nothing to choose right now</h2>\
                  <p>This page refreshes when an agent asks again.</p></main>"
@@ -368,9 +418,7 @@ fn page(app: &TermdenApp) -> String {
     } else {
         ""
     };
-    format!(
-        "<!DOCTYPE html><html><head><meta charset=utf-8><title>termden · choose</title>{refresh}<style>{vars}{CSS}</style></head><body>{body}</body></html>"
-    )
+    document(app, "choose", refresh, &body)
 }
 
 const CSS: &str = "

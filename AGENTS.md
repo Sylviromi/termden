@@ -112,7 +112,10 @@ crates/app/                package `termden`: GPUI binary `termden` + `termdenct
   pty.rs                   Session: tmux client PTY, alacritty Term, key map
   mail.rs                  mailboxes: send/read, idle "you have mail" nudge
   choices.rs               ask_user_choice: localhost picker page (token URL,
-                           theme colours), pick mailed back; sidebar banner
+                           theme colours), pick mailed back; sidebar banner;
+                           the HTTP server and `document()` page wrapper
+  showcase.rs              show_results: view-only gallery pages under `r/`
+                           on the same server; files sandboxed (CSP)
   launch.rs                per-harness claude/opencode config (MCP + prompt)
   update.rs                GitHub release check, footer offer, binary swap
                            (installed copies only; reload does the rest)
@@ -285,7 +288,7 @@ To add one: put its Ghostty theme file name, id and display name in
    sessions; subagent tree and unread counts.
 3. **Control plane** — socket, `termdenctl`, MCP, hybrid mailbox: done for
    claude/opencode tiles started by termden (mail persisted in state.json;
-   MCP tools `termden_agents|send_mail|read_mail|read_screen|set_name|set_tag|set_pronouns|set_title|ask_user_choice`; tiles already
+   MCP tools `termden_agents|send_mail|read_mail|read_screen|set_name|set_tag|set_pronouns|set_title|ask_user_choice|show_results`; tiles already
    running keep their old config until restarted). Next: move the socket to
    `termdend`, JSON-RPC, SO_PEERCRED.
 4. **Polish** — command palette, persistence, optional translucent/blurred

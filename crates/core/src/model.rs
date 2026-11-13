@@ -239,6 +239,29 @@ pub struct Choice {
     pub options: Vec<ChoiceOption>,
 }
 
+/// Work an agent shows the user (images, videos, files): view only, nothing
+/// is sent back. Served by the app's local results page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Showcase {
+    /// Stable id in the page URL (`r/<id>/`).
+    pub id: u64,
+    pub from: HarnessId,
+    /// The agent's name when it shared, for after it is gone.
+    pub from_name: String,
+    pub title: String,
+    pub description: String,
+    /// Wall-clock time it was shared, e.g. `14:05`.
+    pub time: String,
+    pub items: Vec<ShowItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShowItem {
+    pub path: std::path::PathBuf,
+    pub caption: String,
+    pub description: String,
+}
+
 /// Accent indices agents may get: the theme accents minus green (termden's own
 /// status) and red (errors).
 pub const AGENT_COLORS: [usize; 6] = [0, 1, 3, 4, 5, 6];

@@ -24,6 +24,7 @@ mod panel;
 mod popup;
 mod pty;
 mod settings;
+mod showcase;
 mod state;
 mod terminal;
 mod theme;
