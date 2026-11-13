@@ -524,9 +524,6 @@ impl TermdenApp {
     /// Show the restart banner; the user confirms with its button or
     /// ctrl+shift+r. Agents (`termdenctl reload`) can only ask.
     pub fn request_restart(&mut self, reason: &str) {
-        if self.restart_pending.is_none() {
-            self.log("Termden", format!("{reason}: restart to apply"), 0);
-        }
         self.restart_pending = Some(reason.to_string());
     }
 
