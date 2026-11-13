@@ -62,7 +62,6 @@ pub fn parse(from: HarnessId, body: &Value) -> Result<Choice, String> {
 
 impl TermdenApp {
     pub fn add_choice(&mut self, choice: Choice) {
-        self.log_harness(choice.from, format!("needs your choice: {}", choice.title));
         self.choices.push(choice);
         self.save();
     }
