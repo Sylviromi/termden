@@ -48,10 +48,10 @@ say() {
     command -v notify-send >/dev/null && notify-send -a termden -i termden "termden" "$1"
 }
 if tmux -L "$SOCK" has-session -t termden-dx 2>/dev/null; then
-    # dx outlives a closed window; have it rebuild and relaunch the app.
+    # dx outlives a closed window; `o` reopens the app without rebuilding.
     focus || {
-        tmux -L "$SOCK" send-keys -t termden-dx r
-        say "Starting (a few seconds)."
+        tmux -L "$SOCK" send-keys -t termden-dx o
+        say "Reopening termden."
     }
     exit 0
 fi
