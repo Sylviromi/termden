@@ -5586,7 +5586,7 @@ dependencies = [
 
 [[package]]
 name = "termden"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "alacritty_terminal",
  "async-channel 2.5.0",
@@ -5602,7 +5602,7 @@ dependencies = [
 
 [[package]]
 name = "termden-core"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
  "serde_json",

@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/core", "crates/app"]
 
 [workspace.package]
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 rust-version = "1.90"
 license = "GPL-3.0-or-later"
@@ -15,7 +15,7 @@ keywords = ["terminal", "tmux", "agents", "claude", "gpui"]
 categories = ["command-line-utilities", "development-tools"]
 
 [workspace.dependencies]
-termden-core = { path = "crates/core", version = "0.1.5" }
+termden-core = { path = "crates/core", version = "0.1.6" }
 gpui = "0.2.2"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
