@@ -436,7 +436,18 @@ impl TermdenApp {
             "pid": std::process::id(),
             "uptime_s": self.started.elapsed().as_secs_f32(),
             "mode": format!("{:?}", self.mode).to_lowercase(),
-            "window": { "width": self.viewport.0, "height": self.viewport.1 },
+            "window": {
+                "width": self.viewport.0, "height": self.viewport.1,
+                // Title bar diagnostics: what was asked for, whether the
+                // compositor can draw it, and whether termden draws its own.
+                "title_bar": self.config.title_bar,
+                "server_decorations": self.server_decorations,
+                "own_chrome": self.own_chrome.is_some(),
+                "tiled": self.tiled,
+                "maximized": self.own_chrome == Some(true),
+                "session": std::env::var("XDG_SESSION_TYPE").unwrap_or_default(),
+                "desktop": std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default(),
+            },
             "theme": self.config.theme,
             "active": self.active,
             "focused": self.focused,

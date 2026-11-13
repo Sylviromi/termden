@@ -76,8 +76,11 @@ pub struct TermdenApp {
     /// status); the tick only redraws when this is set or something animates.
     redraw: bool,
     /// A title bar is wanted but the desktop draws none (GNOME): show our own
-    /// window buttons and resize edges. `Some(maximized)`; updated every render.
+    /// window buttons, and resize edges unless tiled or maximized.
+    /// `Some(maximized)`; updated every render.
     pub own_chrome: Option<bool>,
+    /// The window is snapped/maximized by the compositor (no resize edges).
+    pub tiled: bool,
     /// The window manager can draw a title bar (`decorations.rs`).
     pub server_decorations: bool,
     /// Live terminals, keyed by harness. tmux owns the processes.
@@ -183,6 +186,7 @@ impl TermdenApp {
             tick: 0,
             redraw: true,
             own_chrome: None,
+            tiled: false,
             server_decorations: true,
             sessions: HashMap::new(),
             focus: cx.focus_handle(),
@@ -837,7 +841,7 @@ impl TermdenApp {
     /// that leave that to the app (see `own_chrome`).
     fn resize_edges(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         use gpui::{CursorStyle, ResizeEdge};
-        if self.own_chrome != Some(false) {
+        if self.own_chrome != Some(false) || self.tiled {
             return Vec::new();
         }
         const T: f32 = 6.0; // grab thickness
@@ -1126,12 +1130,16 @@ impl TermdenApp {
 
     fn render_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.measure(window);
-        self.own_chrome = (self.config.title_bar.wanted()
-            && matches!(
-                window.window_decorations(),
-                gpui::Decorations::Client { tiling } if !tiling.is_tiled()
-            ))
-        .then(|| window.is_maximized());
+        // GNOME reports maximized and snapped windows as tiled too, so tiling
+        // only hides the resize edges, never the buttons (tiling WMs do not
+        // get here: `Auto` wants no title bar there).
+        let client = match window.window_decorations() {
+            gpui::Decorations::Client { tiling } => Some(tiling.is_tiled()),
+            gpui::Decorations::Server => None,
+        };
+        self.tiled = client == Some(true);
+        self.own_chrome =
+            (self.config.title_bar.wanted() && client.is_some()).then(|| window.is_maximized());
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);

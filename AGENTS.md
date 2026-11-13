@@ -198,9 +198,12 @@ assets/config.example.toml  sample config
 - `Config::title_bar` (auto/system/none) picks server or client decorations.
   GPUI reports "server" whenever it was asked for, even where the compositor
   cannot draw it (GNOME, Weston), so `decorations.rs` probes for
-  xdg-decoration first. With client decorations on a floating window,
-  `own_chrome` adds minimize/maximize buttons and resize edges. Weston's kiosk
-  shell (headless-shot) tiles the window, so test this with `--shell=desktop`.
+  xdg-decoration first. With client decorations, `own_chrome` adds
+  minimize/maximize buttons, plus resize edges unless the window is tiled.
+  GNOME reports maximized/snapped windows as tiled, so tiling must never hide
+  the buttons. `termdenctl state` -> `window` shows these values; ask users
+  for it. Weston's kiosk shell (headless-shot) tiles the window like a
+  maximized GNOME one; `--shell=desktop` gives a floating one.
 - Settings popup (theme, text size) writes `~/.config/termden/config.toml`. Icons are Material Symbols Rounded codepoints (`widgets::icons`), from a bundled subset: add new codepoints to it (`crates/app/assets/fonts/README.md`). Keep config fields
   serde-defaulted so old files keep working.
 
