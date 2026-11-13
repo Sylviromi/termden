@@ -96,10 +96,9 @@ pub struct TermdenApp {
     /// Dragging the edge of the left panel.
     pub panel_resizing: bool,
     pub settings_open: bool,
-    pub popups: [crate::popup::PopupPos; 2],
-    /// Questions agents asked the user (front one is shown while `choice_open`).
+    pub popups: [crate::popup::PopupPos; 1],
+    /// Questions agents asked the user, answered in the browser (`choices.rs`).
     pub choices: Vec<termden_core::Choice>,
-    pub choice_open: bool,
     /// Absolute tile rects of the active workspace, from the last frame.
     pub tile_rects: Vec<(HarnessId, TRect)>,
     pub viewport: (f32, f32),
@@ -149,6 +148,7 @@ impl TermdenApp {
 
         if mode == Mode::Live {
             control::listen(cx);
+            crate::choices::listen(cx);
         }
         // Warm the interactive-shell PATH probe before the first agent spawns.
         std::thread::spawn(|| pty::user_path());
@@ -191,7 +191,6 @@ impl TermdenApp {
             settings_open: false,
             popups: Default::default(),
             choices: state.choices,
-            choice_open: state.choice_open,
             tile_rects: Vec::new(),
             viewport: (0.0, 0.0),
             cell: (7.2, 19.0),
@@ -466,20 +465,6 @@ impl TermdenApp {
     fn on_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) -> bool {
         let keystroke = &event.keystroke;
         let m = &keystroke.modifiers;
-        if self.choice_open && !self.choices.is_empty() {
-            match keystroke.key.as_str() {
-                "escape" => {
-                    self.choice_open = false;
-                    self.save();
-                }
-                key => {
-                    if let Some(n) = key.parse::<usize>().ok().filter(|n| *n >= 1) {
-                        self.answer_choice(n - 1);
-                    }
-                }
-            }
-            return true;
-        }
         if self.settings_open {
             if keystroke.key == "escape" {
                 self.settings_open = false;
@@ -600,6 +585,20 @@ impl TermdenApp {
             col.min(session.cols.saturating_sub(1)),
             row.min(session.rows.saturating_sub(1)),
         ))
+    }
+
+    /// Ctrl+click: open the URL under the pointer instead of clicking into tmux.
+    pub fn open_url_at(&self, id: HarnessId, position: Point<Pixels>) -> bool {
+        let Some(url) = self
+            .cell_at(id, position)
+            .and_then(|(col, row)| self.sessions.get(&id)?.url_at(col, row))
+        else {
+            return false;
+        };
+        if let Ok(mut child) = std::process::Command::new("xdg-open").arg(url).spawn() {
+            std::thread::spawn(move || child.wait());
+        }
+        true
     }
 
     pub fn terminal_mouse_down(
@@ -986,7 +985,6 @@ impl Render for TermdenApp {
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
-        self.popups[crate::popup::CHOICE].update(self.choice_open);
         let panel = panel::render(self, cx);
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
@@ -1067,7 +1065,6 @@ impl Render for TermdenApp {
                     ),
             )
             .children(crate::settings::render(self, cx))
-            .children(crate::choices::render(self, cx))
             .children(ghost)
     }
 }

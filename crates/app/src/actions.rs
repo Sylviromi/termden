@@ -118,7 +118,6 @@ impl TermdenApp {
             mail: self.mail.clone(),
             activity: self.activity.clone(),
             choices: self.choices.clone(),
-            choice_open: self.choice_open,
         }
     }
 

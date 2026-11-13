@@ -34,7 +34,7 @@ fn tools() -> Value {
         },
         {
             "name": "termden_ask_user_choice",
-            "description": "Show the user a popup with 2-8 options (e.g. logo or UI design variants) and let them pick. Returns immediately; the choice arrives later as mail from `user` (call termden_read_mail when told). The user may dismiss it with 'choose later' and answer afterwards. Do not wait for it: continue other work or end your turn. Give images as ABSOLUTE paths to png/jpg/svg files (SVG <text> is not rendered: convert text to paths or use png).",
+            "description": "Show the user 2-8 options (e.g. logo or UI design variants) on a local web page and let them pick. Returns the page URL immediately; post it to the user in your reply. The choice arrives later as mail from `user` (call termden_read_mail when told). The user may answer later or skip. Do not wait for it: continue other work or end your turn. Give images as ABSOLUTE paths to png/jpg/svg files.",
             "inputSchema": { "type": "object", "required": ["title", "options"], "properties": {
                 "title": text("what is being chosen, e.g. Pick a logo"),
                 "question": text("optional extra context"),
@@ -120,8 +120,10 @@ fn call(name: &str, args: &Value) -> Result<String, String> {
                 "from": me, "title": args["title"], "question": args["question"],
                 "options": args["options"],
             });
-            request(&format!("choice {body}"))?;
-            Ok("Shown to the user. Their pick will arrive as mail from `user`; do not wait for it.".into())
+            let url = request(&format!("choice {body}"))?;
+            Ok(format!(
+                "Preview started at {url}\nTell the user in your reply, with that exact link on its own line, that the options are ready to pick there (they Ctrl+click it). Their pick will arrive as mail from `user`; do not wait for it."
+            ))
         }
         "termden_set_title" => {
             request(&format!("title {me} {}", arg("title")?.replace('\n', " ")))?;

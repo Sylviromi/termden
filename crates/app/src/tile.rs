@@ -248,7 +248,9 @@ pub fn render(
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, event: &MouseDownEvent, _, _| {
-                    this.terminal_mouse_down(id, MouseButton::Left, event.position)
+                    if !(event.modifiers.control && this.open_url_at(id, event.position)) {
+                        this.terminal_mouse_down(id, MouseButton::Left, event.position)
+                    }
                 }),
             )
             .on_mouse_down(

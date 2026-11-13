@@ -21,7 +21,6 @@ pub struct AppState {
     pub mail: Vec<Mail>,
     pub activity: Vec<Activity>,
     pub choices: Vec<Choice>,
-    pub choice_open: bool,
 }
 
 impl AppState {

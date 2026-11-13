@@ -23,9 +23,9 @@ fn prompt(id: HarnessId, name: &str) -> String {
          the user asks you to change them. Choose with variety in mind: there is no default. Call termden_agents first and pick a name and pronouns (she/her, he/him, they/them, it/its...) that differ from the agents already there, and a name that does not sound like theirs (vary the style, origin and length). Keep termden_set_title current with a short line about \
          what you are doing. IMPORTANT: whenever you have options for the user to choose between \
          (design variants, logos, approaches, names) or the user asks you to show them options, \
-         call termden_ask_user_choice (2-8 options, images as absolute png/jpg/svg paths) so a \
-         popup appears for them; do not just write files or describe options in text. Their pick \
-         comes back as mail from user. When a line says `[termden] New message`, call \
+         call termden_ask_user_choice (2-8 options, images as absolute png/jpg/svg paths); it opens a \
+         picker page, so post the link it returns; do not just write files or describe options in text. Their pick \
+         comes back as mail from user. When a line starts with 📬 (a mail preview from termden), call \
          termden_read_mail. To start a helper agent run `termdenctl add claude` (or opencode); it \
          prints the new harness id N. Then run `termdenctl wait N 20` (it needs a few seconds \
          before it accepts input), give it its task with `termdenctl send --enter N \"task\"` and \

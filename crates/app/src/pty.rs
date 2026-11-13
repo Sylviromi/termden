@@ -328,6 +328,16 @@ impl Session {
             .intersects(TermMode::MOUSE_DRAG | TermMode::MOUSE_MOTION)
     }
 
+    /// The http(s) URL under a visible cell, if any.
+    /// shortcut: only looks at one row, so a URL wrapped onto the next line is
+    /// cut there; join WRAPLINE rows if long links show up.
+    pub fn url_at(&self, col: u16, row: u16) -> Option<String> {
+        let term = self.term.lock();
+        let line = &term.grid()[Line(row as i32)];
+        let text: Vec<char> = (0..term.columns()).map(|c| line[Column(c)].c).collect();
+        url_at(&text, col as usize)
+    }
+
     /// The visible screen as plain text, trailing blanks trimmed.
     pub fn screen_text(&self) -> String {
         let term = self.term.lock();
@@ -377,6 +387,26 @@ fn window_size(cols: u16, rows: u16, (w, h): (f32, f32)) -> WindowSize {
         cell_width: w as u16,
         cell_height: h as u16,
     }
+}
+
+/// The http(s) URL in `line` covering index `col` (one char per cell).
+fn url_at(line: &[char], col: usize) -> Option<String> {
+    let text: String = line.iter().collect();
+    let chars = |s: &str| s.chars().count();
+    for scheme in ["https://", "http://"] {
+        for (byte, _) in text.match_indices(scheme) {
+            let start = chars(&text[..byte]);
+            let tail: String = line[start..]
+                .iter()
+                .take_while(|c| !c.is_whitespace() && !"\"'<>`│".contains(**c))
+                .collect();
+            let url = tail.trim_end_matches(['.', ',', ';', ':', ')', ']', '}', '!', '?']);
+            if (start..start + chars(url)).contains(&col) {
+                return Some(url.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn sgr_mouse(button: u8, col: u16, row: u16, pressed: bool) -> String {
@@ -573,6 +603,18 @@ mod tests {
             key_bytes(&Keystroke::parse("up").unwrap(), true).unwrap(),
             b"\x1bOA"
         );
+    }
+
+    #[test]
+    fn finds_url_under_cell() {
+        let line: Vec<char> = "  see https://x.io/a?b=1. ok http://127.0.0.1:9/t/ │"
+            .chars()
+            .collect();
+        assert_eq!(url_at(&line, 10).as_deref(), Some("https://x.io/a?b=1"));
+        assert_eq!(url_at(&line, 6).as_deref(), Some("https://x.io/a?b=1"));
+        assert_eq!(url_at(&line, 24), None);
+        assert_eq!(url_at(&line, 2), None);
+        assert_eq!(url_at(&line, 30).as_deref(), Some("http://127.0.0.1:9/t/"));
     }
 
     #[test]

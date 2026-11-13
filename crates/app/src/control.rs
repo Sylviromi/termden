@@ -100,7 +100,8 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
                              `wait` on it before sending, input during startup
                              can be lost
   close <h> | restart <h>    kill a harness | re-attach an exited one
-  choice <json>              ask the user to pick: {from,title,question,options:[{label,description,image}]}
+  choice <json>              ask the user to pick in the browser; prints the page URL
+                             {from,title,question,options:[{label,description,image}]}
   rename <h> <name>          rename a harness
   title <h> [text]           set what a harness is working on (empty clears)
   tag <h> [text]             set a harness role tag (empty clears)
@@ -356,10 +357,13 @@ impl TermdenApp {
                 let Some(from) = self.find_harness(body["from"].as_str()) else {
                     return NO_HARNESS.into();
                 };
+                let Some(url) = crate::choices::url() else {
+                    return "error: choice server is not running".into();
+                };
                 match crate::choices::parse(from, &body) {
                     Ok(choice) => {
                         self.add_choice(choice);
-                        "ok".into()
+                        url
                     }
                     Err(error) => format!("error: {error}"),
                 }

@@ -102,6 +102,8 @@ crates/app/                GPUI binary `termden`
   terminal.rs              live grid renderer + mock ANSI buffers per kind
   pty.rs                   Session: tmux client PTY, alacritty Term, key map
   mail.rs                  mailboxes: send/read, idle "you have mail" nudge
+  choices.rs               ask_user_choice: localhost picker page (token URL,
+                           theme colours), pick mailed back; sidebar banner
   launch.rs                per-harness claude/opencode config (MCP + prompt)
   widgets.rs               dots, badges, pills, spinner, icon buttons
 crates/daemon/              bin `termdend` (stub)
@@ -169,6 +171,8 @@ assets/config.example.toml  sample config
 - Clicking a workspace activates it; the chevron toggles expansion (separate
   hit targets, no bubbling conflicts).
 - Clicking a harness focuses its tile and expands its workspace.
+- Ctrl+click on an http(s) URL in a tile opens it with `xdg-open` instead of
+  clicking into tmux (`Session::url_at`, single row only).
 - `visible_tiles` (zoom-aware) is what renders, hit-tests and owns the
   mouse; `layout_tiles` ignores zoom (focus movement, new splits). Split
   dividers come from the same `canvas::walk`.
