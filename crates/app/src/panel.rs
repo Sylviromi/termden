@@ -481,7 +481,7 @@ fn workspace_card(
         .border_color(if active {
             accent.opacity(0.20)
         } else {
-            theme.text.opacity(0.0)
+            theme.text.opacity(0.07)
         })
         .child(
             div()
