@@ -15,6 +15,14 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
     let theme = &app.theme;
     // Never taller than the window (the theme list makes it long).
     let height = (app.viewport.1 - 48.0).min(640.0);
+    // The theme panel opens attached to the card's right edge.
+    let panel_w = 330.0;
+    let width = 560.0
+        + if app.theme_browser.is_some() {
+            panel_w
+        } else {
+            0.0
+        };
 
     let card =
         div()
@@ -60,7 +68,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                         }),
                     )),
                 crate::popup::SETTINGS,
-                (560., height),
+                (width, height),
                 cx,
             ))
             .child(
@@ -79,12 +87,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .flex()
                             .flex_col()
                             .gap(px(14.))
-                            .child(row("Theme", theme).child(theme_stepper(app, cx)))
-                            .children(
-                                app.theme_browser
-                                    .as_ref()
-                                    .map(|b| theme_browser(app, b, cx)),
-                            )
+                            .child(row("Theme", theme).child(current_theme(app, cx)))
                             .child(row("Text size", theme).child(font_stepper(app, cx)))
                             .child(row("Title bar", theme).child(title_bar_choices(app, cx))),
                     ))
@@ -108,6 +111,15 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                     )),
             );
 
+    let card = match &app.theme_browser {
+        Some(browser) => div()
+            .id("settings-wrap")
+            .flex()
+            .h(px(height))
+            .child(card.h_full().rounded_tr(px(0.)).rounded_br(px(0.)))
+            .child(theme_panel(app, browser, panel_w, cx)),
+        None => card,
+    };
     Some(crate::popup::frame(
         "settings-backdrop",
         crate::popup::SETTINGS,
@@ -233,217 +245,214 @@ fn title_bar_choices(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyEleme
         .into_any_element()
 }
 
-/// Theme chooser state: which tab is shown and what has been typed.
+/// The open theme panel: what has been typed into its search bar.
 pub struct ThemeBrowser {
-    pub dark: bool,
     pub filter: String,
 }
 
-/// `‹ Current theme ›  Browse`: arrows step through every theme live.
-fn theme_stepper(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
-    let theme = &app.theme;
-    let current = crate::theme::theme_def(&app.config.theme.0);
-    let open = app.theme_browser.is_some();
-    let step = |id: &'static str, icon, prev: bool, cx: &mut Context<TermdenApp>| {
-        icon_button(id, icon, theme)
-            .size(px(24.))
-            .text_size(theme.ui(14.))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                let id = &this.config.theme.0;
-                let next = if prev {
-                    crate::theme::prev_id(id)
-                } else {
-                    crate::theme::next_id(id)
-                };
-                this.set_theme(next);
-                cx.notify();
-            }))
+/// Position of theme `id` among the panel list's children, which put a
+/// DARK / LIGHT heading before each group (for `ScrollHandle::scroll_to_item`).
+pub fn panel_index(filter: &str, id: &str) -> Option<usize> {
+    let list = crate::theme::browse(filter);
+    let i = list.iter().position(|t| t.id == id)?;
+    let headings = if list[i].dark {
+        1
+    } else {
+        1 + usize::from(list.iter().any(|t| t.dark))
     };
-    div()
-        .flex()
-        .items_center()
-        .gap(px(4.))
-        .child(step("theme-prev", icons::CHEVRON_LEFT, true, cx))
-        .child(
-            div()
-                .w(px(150.))
-                .flex()
-                .justify_center()
-                .truncate()
-                .text_size(theme.ui(11.))
-                .text_color(theme.text)
-                .child(current.name),
-        )
-        .child(step("theme-next", icons::CHEVRON_RIGHT, false, cx))
-        .child(
-            div()
-                .id("theme-browse")
-                .ml(px(6.))
-                .px(px(10.))
-                .h(px(26.))
-                .flex()
-                .items_center()
-                .rounded(px(7.))
-                .border_1()
-                .border_color(if open {
-                    theme.accent(0)
-                } else {
-                    theme.text.opacity(0.10)
-                })
-                .text_size(theme.ui(10.5))
-                .text_color(theme.subtext)
-                .cursor_pointer()
-                .hover(|style| style.bg(theme.surface0))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.theme_browser = match this.theme_browser {
-                        Some(_) => None,
-                        None => Some(ThemeBrowser {
-                            dark: crate::theme::theme_def(&this.config.theme.0).dark,
-                            filter: String::new(),
-                        }),
-                    };
-                    cx.notify();
-                }))
-                .child(if open { "Close" } else { "Browse" }),
-        )
+    Some(i + headings)
+}
+
+/// The current theme as a card; clicking it opens (or closes) the panel.
+fn current_theme(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+    let def = crate::theme::theme_def(&app.config.theme.0);
+    let open = app.theme_browser.is_some();
+    theme_card(app, usize::MAX, def.id, def.name, open)
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.theme_browser = match this.theme_browser {
+                Some(_) => None,
+                None => {
+                    // Open on the current theme, wherever it is in the list.
+                    this.theme_scroll_to
+                        .set(panel_index("", &this.config.theme.0));
+                    Some(ThemeBrowser {
+                        filter: String::new(),
+                    })
+                }
+            };
+            cx.notify();
+        }))
         .into_any_element()
 }
 
-/// Dark/Light tabs, the typed filter, and a short scrolling list of themes.
-fn theme_browser(
+/// A theme in its own colours: background, five accent dots, its name.
+fn theme_card(
     app: &TermdenApp,
-    browser: &ThemeBrowser,
-    cx: &mut Context<TermdenApp>,
-) -> AnyElement {
+    index: usize,
+    id: &'static str,
+    name: &'static str,
+    selected: bool,
+) -> gpui::Stateful<gpui::Div> {
     let theme = &app.theme;
-    let list = crate::theme::browse(browser.dark, &browser.filter);
-    let filtering = !browser.filter.is_empty();
-    let tab = |dark: bool, cx: &mut Context<TermdenApp>| {
-        let active = !filtering && browser.dark == dark;
-        let count = crate::theme::all()
-            .iter()
-            .filter(|t| t.dark == dark)
-            .count();
-        div()
-            .id(if dark { "tab-dark" } else { "tab-light" })
-            .px(px(10.))
-            .h(px(24.))
-            .flex()
-            .items_center()
-            .rounded(px(6.))
-            .text_size(theme.ui(10.))
-            .text_color(if active { theme.text } else { theme.overlay })
-            .when(active, |d| d.bg(theme.surface0))
-            .cursor_pointer()
-            .hover(|style| style.text_color(theme.text))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                if let Some(b) = this.theme_browser.as_mut() {
-                    b.dark = dark;
-                    b.filter.clear();
-                }
-                cx.notify();
-            }))
-            .child(format!("{} {count}", if dark { "Dark" } else { "Light" }))
-    };
-    let rows: Vec<_> = list
-        .iter()
-        .enumerate()
-        .map(|(i, def)| {
-            let preview = Theme::for_id(def.id, &app.config);
-            let selected = crate::theme::theme_def(&app.config.theme.0).id == def.id;
-            let id = def.id;
-            let dot = |color| div().size(px(8.)).rounded(px(4.)).bg(color);
-            div()
-                .id(("theme-row", i))
-                .flex_shrink_0()
-                .h(px(30.))
-                .px(px(8.))
-                .flex()
-                .items_center()
-                .gap(px(10.))
-                .rounded(px(7.))
-                .border_1()
-                .border_color(if selected {
-                    theme.accent(0)
-                } else {
-                    theme.text.opacity(0.0)
-                })
-                .when(selected, |d| d.bg(theme.accent(0).opacity(0.10)))
-                .cursor_pointer()
-                .hover(|style| style.bg(theme.surface0))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.set_theme(id);
-                    cx.notify();
-                }))
-                .child(
-                    div()
-                        .flex_shrink_0()
-                        .flex()
-                        .items_center()
-                        .gap(px(3.))
-                        .px(px(6.))
-                        .h(px(18.))
-                        .rounded(px(5.))
-                        .bg(preview.base)
-                        .border_1()
-                        .border_color(preview.text.opacity(0.15))
-                        .child(dot(preview.accent(0)))
-                        .child(dot(preview.accent(1)))
-                        .child(dot(preview.accent(2)))
-                        .child(dot(preview.accent(3))),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .truncate()
-                        .text_size(theme.ui(10.5))
-                        .text_color(theme.text)
-                        .child(def.name),
-                )
-        })
-        .collect();
+    let preview = Theme::for_id(id, &app.config);
+    let dot = |color| div().size(px(10.)).rounded(px(5.)).bg(color);
     div()
+        .id(("theme-card", index))
+        .w(px(142.))
         .flex()
         .flex_col()
-        .gap(px(8.))
-        .p(px(10.))
+        .gap(px(7.))
+        .p(px(9.))
         .rounded(px(9.))
-        .bg(theme.crust.opacity(0.5))
-        .border_1()
-        .border_color(theme.text.opacity(0.06))
+        .bg(preview.base)
+        .border_2()
+        .border_color(if selected {
+            theme.accent(0)
+        } else {
+            preview.text.opacity(0.10)
+        })
+        .cursor_pointer()
+        .hover(|style| style.opacity(0.85))
         .child(
             div()
                 .flex()
-                .items_center()
                 .gap(px(4.))
-                .child(tab(true, cx))
-                .child(tab(false, cx))
-                .child(div().flex_1())
+                .child(dot(preview.accent(0)))
+                .child(dot(preview.accent(1)))
+                .child(dot(preview.accent(2)))
+                .child(dot(preview.accent(3)))
+                .child(dot(preview.accent(4))),
+        )
+        .child(
+            div()
+                .truncate()
+                .text_size(theme.ui(10.))
+                .text_color(preview.text)
+                .child(name),
+        )
+}
+
+/// Side panel attached to the settings card: a search bar and every theme
+/// (Dark, then Light) as cards. Typing filters; arrows preview; Enter keeps.
+fn theme_panel(
+    app: &TermdenApp,
+    browser: &ThemeBrowser,
+    width: f32,
+    cx: &mut Context<TermdenApp>,
+) -> AnyElement {
+    let theme = &app.theme;
+    let current = crate::theme::theme_def(&app.config.theme.0).id;
+    let list = crate::theme::browse(&browser.filter);
+    if let Some(row) = app.theme_scroll_to.get() {
+        if app.theme_scroll.bounds_for_item(row).is_some() {
+            app.theme_scroll.scroll_to_item(row);
+            app.theme_scroll_to.set(None);
+        } else {
+            cx.notify(); // not laid out yet: try again next frame
+        }
+    }
+    let header = |text: &'static str| {
+        div()
+            .w_full()
+            .pt(px(6.))
+            .text_size(theme.ui(9.5))
+            .font_weight(FontWeight::SEMIBOLD)
+            .text_color(theme.overlay)
+            .child(text)
+    };
+    // Headers and cards are siblings so scroll_to_item can reach each card.
+    let mut items: Vec<AnyElement> = Vec::new();
+    for dark in [true, false] {
+        let group: Vec<_> = list.iter().filter(|t| t.dark == dark).collect();
+        if group.is_empty() {
+            continue;
+        }
+        items.push(header(if dark { "DARK" } else { "LIGHT" }).into_any_element());
+        for def in group {
+            let index = crate::theme::all()
+                .iter()
+                .position(|t| t.id == def.id)
+                .unwrap_or(0);
+            let id = def.id;
+            items.push(
+                theme_card(app, index, def.id, def.name, def.id == current)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.set_theme(id);
+                        cx.notify();
+                    }))
+                    .into_any_element(),
+            );
+        }
+    }
+    let empty = items.is_empty();
+    div()
+        .w(px(width))
+        .h_full()
+        .flex()
+        .flex_col()
+        .bg(theme.mantle)
+        .border_1()
+        .border_l_0()
+        .border_color(theme.text.opacity(0.10))
+        .rounded_tr(px(14.))
+        .rounded_br(px(14.))
+        .shadow_lg()
+        .child(
+            div()
+                .flex_shrink_0()
+                .p(px(14.))
+                .border_b_1()
+                .border_color(theme.text.opacity(0.06))
                 .child(
                     div()
-                        .text_size(theme.ui(10.))
-                        .text_color(if filtering { theme.text } else { theme.overlay })
-                        .child(if filtering {
-                            format!("filter: {}▏", browser.filter)
-                        } else {
-                            "type to filter".into()
-                        }),
+                        .h(px(32.))
+                        .px(px(10.))
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .rounded(px(8.))
+                        .bg(theme.crust)
+                        .border_1()
+                        .border_color(theme.accent(0).opacity(0.5))
+                        .child(
+                            div()
+                                .font_family(crate::widgets::ICON_FONT)
+                                .text_size(theme.ui(14.))
+                                .text_color(theme.overlay)
+                                .child(icons::SEARCH),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .text_size(theme.ui(11.))
+                                .text_color(if browser.filter.is_empty() {
+                                    theme.overlay
+                                } else {
+                                    theme.text
+                                })
+                                .child(if browser.filter.is_empty() {
+                                    "Search themes…".to_string()
+                                } else {
+                                    format!("{}▏", browser.filter)
+                                }),
+                        ),
                 ),
         )
         .child(
             div()
                 .id("theme-list")
-                .max_h(px(216.))
+                .flex_1()
                 .overflow_y_scroll()
                 .track_scroll(&app.theme_scroll)
+                .p(px(14.))
                 .flex()
-                .flex_col()
-                .gap(px(2.))
-                .children(rows)
-                .when(list.is_empty(), |d| {
+                .flex_wrap()
+                .content_start()
+                .gap(px(8.))
+                .children(items)
+                .when(empty, |d| {
                     d.child(
                         div()
-                            .p(px(8.))
                             .text_size(theme.ui(10.5))
                             .text_color(theme.overlay)
                             .child("No theme matches"),
@@ -452,9 +461,14 @@ fn theme_browser(
         )
         .child(
             div()
+                .flex_shrink_0()
+                .px(px(14.))
+                .py(px(8.))
+                .border_t_1()
+                .border_color(theme.text.opacity(0.06))
                 .text_size(theme.ui(9.5))
                 .text_color(theme.overlay)
-                .child("↑↓ preview · Enter keep · Tab dark/light · Esc close"),
+                .child("Type to search · ↑↓ preview · Enter keep · Esc close"),
         )
         .into_any_element()
 }

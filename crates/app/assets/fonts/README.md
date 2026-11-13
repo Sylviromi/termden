@@ -13,6 +13,6 @@ then regenerate (keep ASCII and the name table: without them GPUI renders
 the icons as empty boxes):
 
     pyftsubset 'MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf' \
-      --unicodes=U+0020-007E,U+E145,U+E15B,U+E5CA,U+E5CD,U+E5CF,U+E5D1,U+E5D5,U+E5CC,U+E5CB,U+E8B8,U+EB8E,U+E931,U+E3C1,U+E3E0,U+E5D0 \
+      --unicodes=U+0020-007E,U+E145,U+E15B,U+E5CA,U+E5CD,U+E5CF,U+E5D1,U+E5D5,U+E5CC,U+E8B6,U+E8B8,U+EB8E,U+E931,U+E3C1,U+E3E0,U+E5D0 \
       --layout-features='' --name-IDs='*' --notdef-outline \
       --output-file=MaterialSymbolsRounded-termden.ttf

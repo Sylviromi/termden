@@ -115,7 +115,7 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   mail-send <json>           deliver {from,to,text} (JSON keys, from may be 0)
   mail-read <h>              JSON: unread messages for <h>, marked read
   log <h|0> <text>           post a line to the activity feed
-  settings [close|themes]    open (or close) the settings popup; `themes` opens the theme browser
+  settings [close|themes]    open (or close) the settings popup; `themes` opens the theme panel
   theme [id|list]            set a colour theme, list them, or cycle to the next
   reload                     offer the user a restart (sidebar banner); termden never
                              restarts unasked, the user confirms";
@@ -396,9 +396,10 @@ impl TermdenApp {
                 self.settings_open = arg != Some("close");
                 if arg == Some("themes") {
                     self.theme_browser = Some(crate::settings::ThemeBrowser {
-                        dark: crate::theme::theme_def(&self.config.theme.0).dark,
                         filter: String::new(),
                     });
+                    self.theme_scroll_to
+                        .set(crate::settings::panel_index("", &self.config.theme.0));
                 }
                 "ok".into()
             }
