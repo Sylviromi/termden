@@ -72,6 +72,9 @@ pub struct TermdenApp {
     pub drop_target: Option<(HarnessId, DropZone)>,
     /// Bumped on a timer; drives spinners and the cursor blink.
     pub tick: u64,
+    /// Something visible changed since the last frame (terminal output, a
+    /// status); the tick only redraws when this is set or something animates.
+    redraw: bool,
     /// Live terminals, keyed by harness. tmux owns the processes.
     pub sessions: HashMap<HarnessId, Session>,
     /// Keyboard focus for the whole window; keys go to the focused harness.
@@ -173,6 +176,7 @@ impl TermdenApp {
             drag: None,
             drop_target: None,
             tick: 0,
+            redraw: true,
             sessions: HashMap::new(),
             focus: cx.focus_handle(),
             activity: state.activity,
@@ -399,6 +403,10 @@ impl TermdenApp {
     }
 
     fn on_term_event(&mut self, id: HarnessId, event: TermEvent, cx: &mut Context<Self>) {
+        // Output in a tile that is not on screen changes nothing visible.
+        if !matches!(event, TermEvent::Wakeup) || self.tile_rects.iter().any(|(t, _)| *t == id) {
+            self.redraw = true;
+        }
         let focused = self.focused == Some(id);
         let Some(session) = self.sessions.get_mut(&id) else {
             return;
@@ -458,7 +466,10 @@ impl TermdenApp {
             updates.push((*id, status));
         }
         for (id, status) in updates {
-            self.set_status(id, status);
+            if self.harness(id).is_some_and(|(_, h)| h.status != status) {
+                self.set_status(id, status);
+                self.redraw = true;
+            }
         }
     }
 
@@ -1030,7 +1041,21 @@ impl TermdenApp {
         if self.tick % 8 == 0 {
             self.check_rebuilt();
         }
-        cx.notify();
+        // A full redraw lays out the whole window; skip it when nothing moves.
+        let animating = self.mode == Mode::Demo
+            || self
+                .workspaces
+                .iter()
+                .flat_map(|w| &w.harnesses)
+                .any(|h| h.has_live_subagents() || crate::panel::pending(h));
+        let blink = self.tick % 4 == 0
+            && self
+                .focused
+                .and_then(|id| self.sessions.get(&id))
+                .is_some_and(|s| !s.exited);
+        if std::mem::take(&mut self.redraw) || animating || blink {
+            cx.notify();
+        }
     }
 
     fn render_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
