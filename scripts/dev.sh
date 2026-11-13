@@ -19,8 +19,18 @@ set -uo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if target/debug/termdenctl ping >/dev/null 2>&1; then
-    command -v hyprctl >/dev/null && hyprctl -q dispatch focuswindow class:termden
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/termden"
+mkdir -p "$STATE"
+# Bring an existing window forward (any workspace); fails if there is none.
+focus() {
+    command -v hyprctl >/dev/null &&
+        hyprctl clients -j | grep -q '"class": "termden"' &&
+        hyprctl -q dispatch focuswindow class:termden
+}
+ping="$(target/debug/termdenctl ping 2>&1)"
+echo "$(date +%T) dev.sh: ping=${ping} runtime=${XDG_RUNTIME_DIR:-unset}" >>"$STATE/dev.log"
+if [ "$ping" = pong ] || focus; then
+    focus
     exit 0
 fi
 DX="$(command -v dx || echo "$HOME/.cargo/bin/dx")"
@@ -38,7 +48,11 @@ say() {
     command -v notify-send >/dev/null && notify-send -a termden -i termden "termden" "$1"
 }
 if tmux -L "$SOCK" has-session -t termden-dx 2>/dev/null; then
-    say "Still starting; the window opens on the workspace you launched it from."
+    # dx outlives a closed window; have it rebuild and relaunch the app.
+    focus || {
+        tmux -L "$SOCK" send-keys -t termden-dx r
+        say "Starting (a few seconds)."
+    }
     exit 0
 fi
 ENV=(-e "TERMDEN_BIN_DIR=$ROOT/target/debug" -e "TERMDEN_TMUX_SOCKET=$SOCK")
