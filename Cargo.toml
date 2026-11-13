@@ -6,7 +6,7 @@ members = ["crates/core", "crates/app", "crates/daemon", "crates/cli"]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
-license = "MIT"
+license = "GPL-3.0-or-later"
 description = "Workspace and harness control surface for terminal coding agents"
 
 [workspace.dependencies]

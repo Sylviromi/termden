@@ -19,9 +19,14 @@ reattaches. Workspaces, layouts and focus persist in
 ## Run
 
 ```sh
-cd /mnt/Projects/termden
+git clone <this repo> termden && cd termden
+git config core.hooksPath scripts/git-hooks   # agent-commit sign-off hook
 cargo run -p termden-app
 ```
+
+Linux only (Wayland or X11). Requires `tmux`, a working Vulkan driver, `xdg-open`,
+and the fonts named in the config (`Noto Sans`, `JetBrainsMono Nerd Font`)
+plus "Material Symbols Rounded" for icons.
 
 ## Developing termden inside termden
 
@@ -123,8 +128,24 @@ Vulkan ICD (`lvp_icd.json`).
   `tmux -L termden ls` lists them; `tmux -L termden kill-server` resets them.
 - Borderless window; drag the logo/wordmark to move it.
 
-Not wired yet: agent adapters (status comes from terminal activity), the
-daemon, MCP, agent messaging.
+- Ctrl+click an http(s) link in a tile to open it in your browser.
+
+Not wired yet: agent adapters (status comes from terminal activity) and the
+daemon.
+
+## Agents
+
+Claude Code and opencode tiles started by termden get a `termden` MCP server
+(per-process config; your global settings are untouched):
+
+- `termden_agents`, `termden_read_screen`: see the other tiles.
+- `termden_send_mail`, `termden_read_mail`: mailboxes. An idle agent gets a
+  one-line `📬 sender: preview…` typed into its prompt, never over your draft.
+- `termden_set_name|tag|pronouns|title`: identity shown in the sidebar.
+- `termden_ask_user_choice`: shows you 2-8 options (with images) on a local
+  web page in termden's colours. The agent posts the link; Ctrl+click it,
+  pick, and the answer is mailed back. The page lives on `127.0.0.1` behind a
+  random token kept beside the control socket.
 
 ## Configuration
 
@@ -205,3 +226,7 @@ The app paints its own 12px outer gap, panel radius and tile borders.
    `termdenctl`, MCP tools, hybrid mailbox.
 4. **Polish** — command palette, persistence, optional translucent/blurred
    window background.
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).
