@@ -32,8 +32,13 @@ cargo build -q -p termden-cli || exit 1
 # reload` can press its `r` (full rebuild + relaunch) and you can watch it:
 #   tmux -L termden attach -t termden-dx
 SOCK="${TERMDEN_TMUX_SOCKET:-termden}"
+# Launched from a menu nothing else would show for the ~10s dx needs.
+say() {
+    echo "$1"
+    command -v notify-send >/dev/null && notify-send -a termden -i termden "termden" "$1"
+}
 if tmux -L "$SOCK" has-session -t termden-dx 2>/dev/null; then
-    echo "dev.sh: dx is already running (tmux -L $SOCK attach -t termden-dx)"
+    say "Still starting; the window opens on the workspace you launched it from."
     exit 0
 fi
 ENV=(-e "TERMDEN_BIN_DIR=$ROOT/target/debug" -e "TERMDEN_TMUX_SOCKET=$SOCK")
@@ -43,5 +48,5 @@ for var in PATH WAYLAND_DISPLAY DISPLAY XDG_RUNTIME_DIR TERMDEN_CONTROL_SOCKET \
 done
 tmux -L "$SOCK" new-session -d -s termden-dx -x 160 -y 48 -c "$ROOT" "${ENV[@]}" \
     "$DX serve --hot-patch --platform linux -p termden-app --bin termden --features hotpatch"
-echo "termden is starting under dx (a cold build takes minutes)."
+say "Starting under dx (about 10s, minutes after a dependency change)."
 echo "Watch it: tmux -L $SOCK attach -t termden-dx"
