@@ -269,7 +269,9 @@ fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
     if app.activity_stick.replace(false) {
         app.activity_scroll.scroll_to_bottom();
     }
-    app.activity_smooth.step(&app.activity_scroll, window);
+    if app.activity_smooth.step(&app.activity_scroll) {
+        window.request_animation_frame();
+    }
 
     div()
         .flex()

@@ -111,6 +111,7 @@ pub struct TermdenApp {
     /// Theme chooser in settings (`None` = collapsed to one row).
     pub theme_browser: Option<crate::settings::ThemeBrowser>,
     pub theme_scroll: ScrollHandle,
+    pub theme_smooth: crate::widgets::SmoothScroll,
     /// List row to bring into view once the theme panel has laid out (GPUI
     /// can only scroll to rows it has measured).
     pub theme_scroll_to: std::cell::Cell<Option<usize>>,
@@ -216,6 +217,7 @@ impl TermdenApp {
             settings_open: false,
             theme_browser: None,
             theme_scroll: ScrollHandle::new(),
+            theme_smooth: Default::default(),
             theme_scroll_to: Default::default(),
             restart_pending: None,
             popups: Default::default(),

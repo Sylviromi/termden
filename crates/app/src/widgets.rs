@@ -1,8 +1,8 @@
 use std::cell::Cell;
 
 use gpui::{
-    Div, ElementId, FontWeight, Hsla, ScrollHandle, SharedString, Stateful, Window, div, point,
-    prelude::*, px,
+    Div, ElementId, FontWeight, Hsla, ScrollHandle, SharedString, Stateful, div, point, prelude::*,
+    px,
 };
 use termden_core::HarnessKind;
 
@@ -138,9 +138,8 @@ pub fn spinner(theme: &Theme, color: Hsla, tick: u64) -> Div {
 /// Smooth scrolling for a GPUI scroll container. GPUI moves a whole wheel
 /// step (three lines) at once; `step` takes where GPUI put it as the target
 /// and eases the visible offset there over a few frames. Call it from render,
-/// before the container lays out, every frame.
-///
-/// Animation frames are requested only while gliding (the one exception to
+/// before the container lays out, every frame. It returns true while still
+/// gliding: the caller then asks for another frame (the one exception to
 /// "the 120ms ticker drives all animation": scrolling must follow at 60fps).
 #[derive(Default)]
 pub struct SmoothScroll {
@@ -149,7 +148,8 @@ pub struct SmoothScroll {
 }
 
 impl SmoothScroll {
-    pub fn step(&self, handle: &ScrollHandle, window: &mut Window) {
+    #[must_use]
+    pub fn step(&self, handle: &ScrollHandle) -> bool {
         let now = f32::from(handle.offset().y);
         let shown = self.shown.get();
         let max = f32::from(handle.max_offset().height);
@@ -167,9 +167,7 @@ impl SmoothScroll {
             handle.set_offset(point(handle.offset().x, px(next)));
         }
         self.shown.set(next);
-        if next != target {
-            window.request_animation_frame();
-        }
+        next != target
     }
 
     /// Whether the glide is headed for (or at) the bottom.
