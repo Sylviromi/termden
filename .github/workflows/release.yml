@@ -14,7 +14,7 @@ jobs:
     # Oldest supported runner: the binary then runs on glibc >= 2.35.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check the tag matches the workspace version
         run: |
