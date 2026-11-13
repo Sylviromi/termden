@@ -1,6 +1,6 @@
 pkgbase = termden-bin
 	pkgdesc = Workspaces and tiled terminals for coding agents (Claude Code, opencode, pi)
-	pkgver = 0.1.5
+	pkgver = 0.1.6
 	pkgrel = 1
 	url = https://github.com/Sylviromi/termden
 	arch = x86_64
@@ -19,7 +19,7 @@ pkgbase = termden-bin
 	optdepends = vulkan-driver: GPU rendering
 	provides = termden
 	conflicts = termden
-	source = termden-0.1.5.tar.gz::https://github.com/Sylviromi/termden/releases/download/v0.1.5/termden-x86_64-linux.tar.gz
-	sha256sums = b64e50b400ca42b7ab7ef5ab7834882870b30fd13149ef89a3b771209756e659
+	source = termden-0.1.6.tar.gz::https://github.com/Sylviromi/termden/releases/download/v0.1.6/termden-x86_64-linux.tar.gz
+	sha256sums = 5071e7b2d6696e346be6837c565fb1da50ab5cdf1c44977ccbd14c03319d1865
 
 pkgname = termden-bin
