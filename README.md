@@ -44,11 +44,13 @@ This compiles C and C++ code from GPUI's dependencies, so it needs a C/C++
 toolchain and a few dev packages first:
 
 - Arch: `sudo pacman -S --needed base-devel pkgconf libxkbcommon-x11 wayland vulkan-icd-loader freetype2 fontconfig`
-- Debian/Ubuntu: `sudo apt install build-essential pkg-config clang libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev libxcb1-dev`
+- Debian/Ubuntu: `sudo apt install build-essential pkg-config clang libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libfontconfig-dev libfreetype-dev libxcb1-dev libxcb-xkb-dev`
 - Fedora: `sudo dnf install gcc gcc-c++ clang pkgconf-pkg-config libxkbcommon-x11-devel wayland-devel vulkan-loader-devel fontconfig-devel freetype-devel libxcb-devel`
 
 `failed to find tool "c++"` means the C++ compiler is missing (`build-essential`,
-`gcc-c++` or `base-devel`). Updates arrive the same way as below (or re-run the command).
+`gcc-c++` or `base-devel`). `linking with cc failed` with `cannot find -lxyz`
+in its notes means that library's dev package is missing (on Debian/Ubuntu
+`-lxcb-xkb` is `libxcb-xkb-dev`, `-lxkbcommon-x11` is `libxkbcommon-x11-dev`). Updates arrive the same way as below (or re-run the command).
 
 **Updates:** termden checks GitHub for a new release every few hours. When one
 is out, the sidebar footer shows **Update to vX.Y.Z**; click it (or run
