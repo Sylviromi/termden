@@ -59,9 +59,9 @@ in its notes means that library's dev package is missing (on Debian/Ubuntu
 `-lxcb-xkb` is `libxcb-xkb-dev`, `-lxkbcommon-x11` is `libxkbcommon-x11-dev`). Updates arrive the same way as below (or re-run the command).
 
 **Updates:** termden checks GitHub for a new release every few hours. When one
-is out, the sidebar footer shows **Update to vX.Y.Z**; click it (or run
-`termdenctl update`). The new binary is swapped in and termden restarts itself
-in place, and every tile keeps running. Re-running the installer works too.
+is out, a download button appears next to Settings: it shows what's new
+(`CHANGELOG.md`), installs with a progress bar (or run `termdenctl update`),
+then asks before restarting into it; every tile keeps running. Re-running the installer works too.
 Launching termden again while it runs focuses the existing window (Hyprland).
 
 ## Build from source
@@ -128,13 +128,16 @@ Enter on an exited tile restarts it.
 
 ### Releasing
 
-1. Bump `version` in the root `Cargo.toml`, and the `termden-core` version in
+1. Write the `## v0.2.0` section in `CHANGELOG.md` (user-facing, one line
+   per change); it becomes the release notes and the update popup's text.
+2. Bump `version` in the root `Cargo.toml`, and the `termden-core` version in
    `[workspace.dependencies]` to match; commit.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-   `.github/workflows/release.yml` tests, builds on Ubuntu 22.04 and publishes
-   `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
-3. crates.io: `cargo publish --workspace`.
-4. AUR: in `packaging/aur/termden-bin`, set `pkgver`, run `updpkgsums` and
+3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+   `.github/workflows/release.yml` checks the changelog section, tests, builds
+   on Ubuntu 22.04 and publishes `termden-x86_64-linux.tar.gz`; installed
+   copies show a download button next to Settings.
+4. crates.io: `cargo publish --workspace`.
+5. AUR: in `packaging/aur/termden-bin`, set `pkgver`, run `updpkgsums` and
    `makepkg --printsrcinfo > .SRCINFO`, then push both to the AUR repo.
 
 ## Headless screenshots

@@ -31,7 +31,7 @@ pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
         .child(activity(app, window))
-        .child(footer(app, cx))
+        .child(footer(app))
         .into_any_element()
 }
 
@@ -50,6 +50,8 @@ fn header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                 .flex()
                 .flex_1()
                 .min_w(px(0.))
+                // Clip the wordmark when buttons crowd it, never overlap them.
+                .overflow_hidden()
                 .items_center()
                 .gap(px(9.))
                 .on_mouse_down(MouseButton::Left, |event, window, _| {
@@ -161,6 +163,7 @@ fn header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                 .flex_shrink_0()
                 .items_center()
                 .gap(px(gap))
+                .children(crate::update::button(app, button, cx))
                 .child(
                     icon_button("settings", icons::SETTINGS, theme)
                         .size(px(button))
@@ -919,7 +922,7 @@ fn subagent_rows(harness: &Harness, theme: &Theme, tick: u64) -> Option<Div> {
     )
 }
 
-fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+fn footer(app: &TermdenApp) -> AnyElement {
     let theme = &app.theme;
     let working = app.working_count();
     let total = app.harness_count();
@@ -950,28 +953,6 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                     if total == 1 { "" } else { "es" }
                 )),
         )
-        .children(app.update_available.as_ref().map(|tag| {
-            div()
-                .id("update")
-                .ml_auto()
-                .px(px(8.))
-                .py(px(3.))
-                .rounded(px(6.))
-                .bg(theme.green.opacity(0.14))
-                .text_size(theme.ui(9.5))
-                .text_color(theme.green)
-                .cursor_pointer()
-                .hover(|s| s.bg(theme.green.opacity(0.24)))
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.apply_update(cx);
-                    cx.notify();
-                }))
-                .child(if app.updating {
-                    format!("Updating to {tag}…")
-                } else {
-                    format!("Update to {tag}")
-                })
-        }))
         .into_any_element()
 }
 

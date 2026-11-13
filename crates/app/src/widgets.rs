@@ -25,6 +25,7 @@ pub mod icons {
     pub const EXPAND_MORE: &str = "\u{e5cf}";
     pub const CHEVRON_RIGHT: &str = "\u{e5cc}";
     pub const SEARCH: &str = "\u{e8b6}";
+    pub const DOWNLOAD: &str = "\u{f090}";
     pub const TERMINAL: &str = "\u{eb8e}";
     pub const MINIMIZE: &str = "\u{e931}";
     pub const MAXIMIZE: &str = "\u{e3c1}";

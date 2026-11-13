@@ -111,8 +111,10 @@ crates/app/                package `termden`: GPUI binary `termden` + `termdenct
   showcase.rs              show_results: view-only gallery pages under `r/`
                            on the same server; files sandboxed (CSP)
   launch.rs                per-harness claude/opencode config (MCP + prompt)
-  update.rs                GitHub release check, footer offer, binary swap
-                           (installed copies only; reload does the rest)
+  update.rs                GitHub release check, header button + popup
+                           (notes from CHANGELOG.md, progress, confirm
+                           restart); installed copies only.
+                           TERMDEN_UPDATE_URL points it at a test JSON
   widgets.rs               dots, badges, pills, spinner, icon buttons
   bin/termdenctl/          second binary of the same package: socket client,
                            screenshot, `mail`, `mcp` stdio server

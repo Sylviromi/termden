@@ -10,6 +10,7 @@ use gpui::{
 use crate::state::TermdenApp;
 
 pub const SETTINGS: usize = 0;
+pub const UPDATE: usize = 1;
 
 const ANIM: Duration = Duration::from_millis(180);
 const MARGIN: f32 = 60.0;

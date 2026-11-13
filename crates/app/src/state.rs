@@ -118,7 +118,7 @@ pub struct TermdenApp {
     /// A rebuilt binary or an agent asked for a restart; the sidebar offers
     /// it and the user confirms (`request_restart`).
     pub restart_pending: Option<String>,
-    pub popups: [crate::popup::PopupPos; 1],
+    pub popups: [crate::popup::PopupPos; 2],
     /// Questions agents asked the user, answered in the browser (`choices.rs`).
     pub choices: Vec<termden_core::Choice>,
     /// Results agents shared with the user, newest last (`showcase.rs`).
@@ -133,8 +133,8 @@ pub struct TermdenApp {
     /// Link under the pointer while ctrl is held: (tile, row, start col, cells).
     hover_url: Option<(HarnessId, u16, u16, u16)>,
     /// Newer release tag offered in the footer (`update.rs`).
-    pub update_available: Option<String>,
-    pub updating: bool,
+    pub update: Option<crate::update::Update>,
+    pub update_open: bool,
     scroll_lines: f32,
     /// Our own binary and its mtime at startup, for reload-on-rebuild.
     pub(crate) exe: Option<(PathBuf, SystemTime)>,
@@ -228,8 +228,8 @@ impl TermdenApp {
             cell: (7.2, 19.0),
             mouse_press: None,
             hover_url: None,
-            update_available: None,
-            updating: false,
+            update: None,
+            update_open: false,
             scroll_lines: 0.0,
             exe,
             started: Instant::now(),
@@ -507,6 +507,12 @@ impl TermdenApp {
     fn on_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) -> bool {
         let keystroke = &event.keystroke;
         let m = &keystroke.modifiers;
+        if self.update_open {
+            if keystroke.key == "escape" {
+                self.update_open = false;
+            }
+            return true;
+        }
         if self.settings_open {
             if self.theme_browser.is_some() {
                 self.theme_browser_key(keystroke);
@@ -1176,6 +1182,7 @@ impl TermdenApp {
         }
         // A full redraw lays out the whole window; skip it when nothing moves.
         let animating = self.mode == Mode::Demo
+            || self.update_downloading()
             || self
                 .workspaces
                 .iter()
@@ -1206,6 +1213,7 @@ impl TermdenApp {
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
+        self.popups[crate::popup::UPDATE].update(self.update_open);
         let panel = panel::render(self, window, cx);
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
@@ -1301,6 +1309,7 @@ impl TermdenApp {
             .children(self.resize_edges(cx))
             .children(self.hover_url_element())
             .children(crate::settings::render(self, window, cx))
+            .children(crate::update::render(self, cx))
             .children(ghost)
             .into_any_element()
     }
