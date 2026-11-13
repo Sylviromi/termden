@@ -1,9 +1,12 @@
-# Push a tag like v0.2.0 (matching the workspace version) to publish a
-# release. Running apps offer it in their footer; `install.sh` fetches it.
+# Pushes to main: test + release build, which also fills the build cache.
+# Tags like v0.2.0 (matching the workspace version) additionally publish a
+# release; running apps offer it in their footer, `install.sh` fetches it.
+# Tag runs may only restore caches saved on main, hence the main builds.
 name: release
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions:
@@ -17,6 +20,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Check the tag matches the workspace version
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
           [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != v$version"; exit 1; }
@@ -30,11 +34,15 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux-release
 
-      - run: cargo test --workspace
+      # Release-mode tests share compiled dependencies with the build below.
+      - run: cargo test --release --workspace
       - run: cargo build --release -p termden
 
       - name: Package
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p dist/termden
           cp target/release/termden target/release/termdenctl dist/termden/
@@ -42,6 +50,7 @@ jobs:
           tar -C dist -czf termden-x86_64-linux.tar.gz termden
 
       - name: Publish
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" termden-x86_64-linux.tar.gz --generate-notes
