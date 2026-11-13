@@ -1,7 +1,7 @@
 //! The settings popup: theme, text size and the shortcut reference.
 
 use gpui::{AnyElement, Context, FontWeight, div, prelude::*, px};
-use termden_core::ThemeId;
+use termden_core::{ThemeId, TitleBar};
 
 use crate::panel::tip;
 use crate::state::TermdenApp;
@@ -78,7 +78,8 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .flex_col()
                             .gap(px(14.))
                             .child(row("Theme", theme).child(theme_choices(app, cx)))
-                            .child(row("Text size", theme).child(font_stepper(app, cx))),
+                            .child(row("Text size", theme).child(font_stepper(app, cx)))
+                            .child(row("Title bar", theme).child(title_bar_choices(app, cx))),
                     ))
                     .child(section(
                         "SHORTCUTS · CTRL+SHIFT +",
@@ -239,6 +240,50 @@ fn font_stepper(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                 this.set_font_size(this.config.font_size + 1.0);
                 cx.notify();
             })),
+        )
+        .into_any_element()
+}
+
+/// Auto / System / None; applies to the open window right away.
+fn title_bar_choices(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+    let theme = &app.theme;
+    div()
+        .flex()
+        .gap(px(6.))
+        .children(
+            TitleBar::ALL
+                .into_iter()
+                .enumerate()
+                .map(|(index, choice)| {
+                    let selected = app.config.title_bar == choice;
+                    div()
+                        .id(("title-bar-choice", index))
+                        .px(px(10.))
+                        .h(px(26.))
+                        .flex()
+                        .items_center()
+                        .rounded(px(7.))
+                        .border_1()
+                        .border_color(if selected {
+                            theme.accent(0)
+                        } else {
+                            theme.text.opacity(0.10)
+                        })
+                        .bg(if selected {
+                            theme.accent(0).opacity(0.14)
+                        } else {
+                            theme.text.opacity(0.0)
+                        })
+                        .text_size(theme.ui(10.5))
+                        .text_color(if selected { theme.text } else { theme.subtext })
+                        .cursor_pointer()
+                        .hover(|style| style.bg(theme.surface0))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            this.set_title_bar(choice, window);
+                            cx.notify();
+                        }))
+                        .child(choice.label())
+                }),
         )
         .into_any_element()
 }

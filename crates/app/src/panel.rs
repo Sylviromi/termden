@@ -51,7 +51,14 @@ fn header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                 .min_w(px(0.))
                 .items_center()
                 .gap(px(9.))
-                .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+                .on_mouse_down(MouseButton::Left, |event, window, _| {
+                    // Double-click maximizes, like a title bar would.
+                    if event.click_count == 2 {
+                        window.zoom_window();
+                    } else {
+                        window.start_window_move();
+                    }
+                })
                 .child(
                     div()
                         .flex_shrink_0()
@@ -97,6 +104,7 @@ fn header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                                 .text_size(theme.ui(14.))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(theme.text)
+                                .whitespace_nowrap()
                                 .child("TERMDEN"),
                         )
                         .child(
@@ -139,23 +147,54 @@ fn header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                         ),
                 ),
         )
-        .child(
-            icon_button("settings", icons::SETTINGS, theme)
-                .size(px(26.))
-                .text_size(theme.ui(15.))
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.settings_open = true;
-                    cx.notify();
-                })),
-        )
-        .child(
-            icon_button("close", icons::CLOSE, theme)
-                .size(px(26.))
-                .text_size(theme.ui(14.))
-                .on_click(cx.listener(|_, _, window, _| {
-                    window.remove_window();
-                })),
-        )
+        .child({
+            // Window buttons join settings/close when the desktop draws no
+            // title bar; then everything packs tighter to keep the wordmark.
+            let (button, gap) = if app.own_chrome.is_some() {
+                (22., 2.)
+            } else {
+                (26., 9.)
+            };
+            div()
+                .flex()
+                .flex_shrink_0()
+                .items_center()
+                .gap(px(gap))
+                .child(
+                    icon_button("settings", icons::SETTINGS, theme)
+                        .size(px(button))
+                        .text_size(theme.ui(15.))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.settings_open = true;
+                            cx.notify();
+                        })),
+                )
+                .children(app.own_chrome.map(|_| {
+                    icon_button("minimize", icons::MINIMIZE, theme)
+                        .size(px(button))
+                        .text_size(theme.ui(14.))
+                        .on_click(|_, window, _| window.minimize_window())
+                }))
+                .children(app.own_chrome.map(|maximized| {
+                    let icon = if maximized {
+                        icons::RESTORE
+                    } else {
+                        icons::MAXIMIZE
+                    };
+                    icon_button("maximize", icon, theme)
+                        .size(px(button))
+                        .text_size(theme.ui(13.))
+                        .on_click(|_, window, _| window.zoom_window())
+                }))
+                .child(
+                    icon_button("close", icons::CLOSE, theme)
+                        .size(px(button))
+                        .text_size(theme.ui(14.))
+                        .on_click(cx.listener(|_, _, window, _| {
+                            window.remove_window();
+                        })),
+                )
+        })
         .into_any_element()
 }
 

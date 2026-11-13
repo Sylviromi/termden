@@ -8,7 +8,7 @@ pub mod layout;
 pub mod model;
 pub mod state;
 
-pub use config::{Config, ThemeId};
+pub use config::{Config, ThemeId, TitleBar};
 pub use layout::{Axis, DropZone, LayoutNode};
 pub use model::{
     AGENT_COLORS, Activity, Choice, ChoiceOption, Harness, HarnessId, HarnessKind, HarnessStatus,

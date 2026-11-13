@@ -75,6 +75,11 @@ pub struct TermdenApp {
     /// Something visible changed since the last frame (terminal output, a
     /// status); the tick only redraws when this is set or something animates.
     redraw: bool,
+    /// A title bar is wanted but the desktop draws none (GNOME): show our own
+    /// window buttons and resize edges. `Some(maximized)`; updated every render.
+    pub own_chrome: Option<bool>,
+    /// The window manager can draw a title bar (`decorations.rs`).
+    pub server_decorations: bool,
     /// Live terminals, keyed by harness. tmux owns the processes.
     pub sessions: HashMap<HarnessId, Session>,
     /// Keyboard focus for the whole window; keys go to the focused harness.
@@ -177,6 +182,8 @@ impl TermdenApp {
             drop_target: None,
             tick: 0,
             redraw: true,
+            own_chrome: None,
+            server_decorations: true,
             sessions: HashMap::new(),
             focus: cx.focus_handle(),
             activity: state.activity,
@@ -813,6 +820,65 @@ impl TermdenApp {
         }
     }
 
+    /// Switch the title bar setting and apply it to the open window.
+    pub fn set_title_bar(&mut self, title_bar: termden_core::TitleBar, window: &Window) {
+        self.config.title_bar = title_bar;
+        window.request_decorations(if title_bar.wanted() && self.server_decorations {
+            gpui::WindowDecorations::Server
+        } else {
+            gpui::WindowDecorations::Client
+        });
+        if let Err(error) = self.config.save() {
+            eprintln!("termden: could not save config: {error}");
+        }
+    }
+
+    /// Invisible strips along the window border that resize it, for desktops
+    /// that leave that to the app (see `own_chrome`).
+    fn resize_edges(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        use gpui::{CursorStyle, ResizeEdge};
+        if self.own_chrome != Some(false) {
+            return Vec::new();
+        }
+        const T: f32 = 6.0; // grab thickness
+        const C: f32 = 14.0; // corner size
+        [
+            (ResizeEdge::Top, CursorStyle::ResizeUpDown),
+            (ResizeEdge::Bottom, CursorStyle::ResizeUpDown),
+            (ResizeEdge::Left, CursorStyle::ResizeLeftRight),
+            (ResizeEdge::Right, CursorStyle::ResizeLeftRight),
+            (ResizeEdge::TopLeft, CursorStyle::ResizeUpLeftDownRight),
+            (ResizeEdge::BottomRight, CursorStyle::ResizeUpLeftDownRight),
+            (ResizeEdge::TopRight, CursorStyle::ResizeUpRightDownLeft),
+            (ResizeEdge::BottomLeft, CursorStyle::ResizeUpRightDownLeft),
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, (edge, cursor))| {
+            let strip = div().id(("resize-edge", i)).absolute().cursor(cursor);
+            let strip = match edge {
+                ResizeEdge::Top => strip.top_0().left(px(C)).right(px(C)).h(px(T)),
+                ResizeEdge::Bottom => strip.bottom_0().left(px(C)).right(px(C)).h(px(T)),
+                ResizeEdge::Left => strip.left_0().top(px(C)).bottom(px(C)).w(px(T)),
+                ResizeEdge::Right => strip.right_0().top(px(C)).bottom(px(C)).w(px(T)),
+                ResizeEdge::TopLeft => strip.top_0().left_0().size(px(C)),
+                ResizeEdge::TopRight => strip.top_0().right_0().size(px(C)),
+                ResizeEdge::BottomLeft => strip.bottom_0().left_0().size(px(C)),
+                ResizeEdge::BottomRight => strip.bottom_0().right_0().size(px(C)),
+            };
+            strip
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |_, _, window, cx| {
+                        window.start_window_resize(edge);
+                        cx.stop_propagation();
+                    }),
+                )
+                .into_any_element()
+        })
+        .collect()
+    }
+
     pub fn cycle_theme(&mut self) {
         self.set_theme(self.config.theme.next());
     }
@@ -1060,6 +1126,12 @@ impl TermdenApp {
 
     fn render_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.measure(window);
+        self.own_chrome = (self.config.title_bar.wanted()
+            && matches!(
+                window.window_decorations(),
+                gpui::Decorations::Client { tiling } if !tiling.is_tiled()
+            ))
+        .then(|| window.is_maximized());
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
@@ -1149,6 +1221,7 @@ impl TermdenApp {
                         }),
                     ),
             )
+            .children(self.resize_edges(cx))
             .children(self.hover_url_element())
             .children(crate::settings::render(self, cx))
             .children(ghost)

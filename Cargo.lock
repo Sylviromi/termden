@@ -5597,6 +5597,7 @@ dependencies = [
  "serde_json",
  "subsecond",
  "termden-core",
+ "wayland-client",
 ]
 
 [[package]]

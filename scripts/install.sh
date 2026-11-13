@@ -46,11 +46,6 @@ missing=""
 command -v tmux >/dev/null || missing="$missing\n  - tmux (every tile runs in it)"
 command -v xdg-open >/dev/null || missing="$missing\n  - xdg-open (opening links)"
 ls /usr/share/vulkan/icd.d/*.json >/dev/null 2>&1 || ls /etc/vulkan/icd.d/*.json >/dev/null 2>&1 || missing="$missing\n  - a Vulkan driver (mesa-vulkan-drivers / vulkan-radeon / nvidia)"
-if command -v fc-list >/dev/null; then
-    for font in "Noto Sans" "JetBrainsMono Nerd Font" "Material Symbols Rounded"; do
-        fc-list : family | grep -qi "$font" || missing="$missing\n  - font: $font"
-    done
-fi
 [ -n "$missing" ] && printf "Still needed:%b\n" "$missing"
 case ":$PATH:" in
     *":$BIN:"*) ;;

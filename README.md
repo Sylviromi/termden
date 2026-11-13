@@ -24,9 +24,8 @@ curl -fsSL https://raw.githubusercontent.com/Sylviromi/termden/main/scripts/inst
 
 The script installs `termden` and `termdenctl` into `~/.local/bin`, plus a launcher entry
 and icon; no root and no Rust toolchain. Linux x86_64 (Wayland or X11, glibc
-2.35+). It also needs `tmux`, a Vulkan driver, `xdg-open`, and the fonts `Noto Sans`,
-`JetBrainsMono Nerd Font` and "Material Symbols Rounded"; the installer lists
-whatever is missing. `sh install.sh --uninstall` removes it again.
+2.35+). It also needs `tmux`, a Vulkan driver and `xdg-open`; the installer
+lists whatever is missing. Fonts are built in. `sh install.sh --uninstall` removes it again.
 
 On Arch (AUR):
 
@@ -212,9 +211,17 @@ font_size = 16.0             # terminal text; ctrl+shift +/-/0
 panel_width = 268.0
 gap = 12.0
 corner_radius = 12.0
+title_bar = "auto"           # or "system" / "none"; settings popup too
 ```
 
-The settings popup writes the same file. Icons use the system font "Material Symbols Rounded".
+`title_bar = "auto"` shows no title bar under tiling window managers
+(Hyprland, Sway, i3, niri) and the desktop's own everywhere else. Desktops
+that never draw one for apps (GNOME on Wayland) get termden's own minimize,
+maximize and close buttons in the panel header, and resizable window edges.
+
+The settings popup writes the same file. The default fonts and the icon font
+are bundled in the binary (`crates/app/assets/fonts`); any installed font can
+be named here instead.
 
 ## Layout
 

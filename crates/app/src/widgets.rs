@@ -5,7 +5,8 @@ use crate::theme::Theme;
 
 pub const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/// Material Symbols Rounded (installed system font), addressed by codepoint.
+/// Material Symbols Rounded, addressed by codepoint. Bundled as a subset
+/// (assets/fonts): add a new icon's codepoint there too.
 pub const ICON_FONT: &str = "Material Symbols Rounded";
 
 pub mod icons {
@@ -19,6 +20,9 @@ pub mod icons {
     pub const EXPAND_MORE: &str = "\u{e5cf}";
     pub const CHEVRON_RIGHT: &str = "\u{e5e0}";
     pub const TERMINAL: &str = "\u{eb8e}";
+    pub const MINIMIZE: &str = "\u{e931}";
+    pub const MAXIMIZE: &str = "\u{e3c1}";
+    pub const RESTORE: &str = "\u{e3e0}";
 }
 
 pub fn hspacer() -> Div {

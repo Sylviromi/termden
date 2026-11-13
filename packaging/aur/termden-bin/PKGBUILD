@@ -8,9 +8,8 @@ arch=('x86_64')
 url="https://github.com/Sylviromi/termden"
 license=('GPL-3.0-or-later')
 depends=('tmux' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'wayland' 'vulkan-icd-loader'
-         'fontconfig' 'freetype2' 'xdg-utils' 'noto-fonts' 'ttf-jetbrains-mono-nerd')
-optdepends=('ttf-material-symbols-variable-git: UI icons (AUR)'
-            'claude-code: Claude Code agent tiles'
+         'fontconfig' 'freetype2' 'xdg-utils')
+optdepends=('claude-code: Claude Code agent tiles'
             'opencode: opencode agent tiles'
             'vulkan-driver: GPU rendering')
 provides=('termden')

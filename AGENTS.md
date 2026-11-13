@@ -195,8 +195,14 @@ assets/config.example.toml  sample config
   centre swaps. `LayoutNode::move_leaf` performs remove-then-split; do not
   duplicate leaves.
 - The panel header (logo + wordmark) moves the borderless window via
-  `window.start_window_move()`.
-- Settings popup (theme, text size) writes `~/.config/termden/config.toml`. Icons are Material Symbols Rounded codepoints (`widgets::icons`); the font must be installed. Keep config fields
+  `window.start_window_move()`; double-click maximizes.
+- `Config::title_bar` (auto/system/none) picks server or client decorations.
+  GPUI reports "server" whenever it was asked for, even where the compositor
+  cannot draw it (GNOME, Weston), so `decorations.rs` probes for
+  xdg-decoration first. With client decorations on a floating window,
+  `own_chrome` adds minimize/maximize buttons and resize edges. Weston's kiosk
+  shell (headless-shot) tiles the window, so test this with `--shell=desktop`.
+- Settings popup (theme, text size) writes `~/.config/termden/config.toml`. Icons are Material Symbols Rounded codepoints (`widgets::icons`), from a bundled subset: add new codepoints to it (`crates/app/assets/fonts/README.md`). Keep config fields
   serde-defaulted so old files keep working.
 
 ### Themes
@@ -238,7 +244,9 @@ To add a palette:
 - **`on_click` requires an id.** `div().id(...)` returns `Stateful<Div>`;
   returning `Div` from a helper after `.id()` will not compile.
 - **GPUI defaults:** Wayland/X11/font-kit/blade are already default features.
-  Fonts used on this machine: `Noto Sans`, `JetBrainsMono Nerd Font`.
+  Default fonts (`Noto Sans`, `JetBrainsMono Nerd Font`) and the icon font are
+  bundled and registered in `main.rs`; without them GPUI panics at startup
+  ("failed to resolve font") on machines that lack them.
 
 ## Product constraints for the next phases
 

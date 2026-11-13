@@ -16,6 +16,7 @@ mod actions;
 mod canvas;
 mod choices;
 mod control;
+mod decorations;
 mod launch;
 mod mail;
 mod mock;
@@ -70,6 +71,8 @@ fn main() {
         rx
     };
 
+    let server_decorations = decorations::server_side_available();
+
     Application::new().run(move |cx: &mut App| {
         #[cfg(feature = "hotpatch")]
         cx.spawn(async move |cx| {
@@ -79,14 +82,39 @@ fn main() {
         })
         .detach();
 
+        // Bundled fonts (assets/fonts): a fresh machine renders correctly
+        // without installing them; installed copies keep working.
+        if let Err(error) = cx.text_system().add_fonts(
+            [
+                &include_bytes!("../assets/fonts/NotoSans-Regular.ttf")[..],
+                include_bytes!("../assets/fonts/NotoSans-Medium.ttf"),
+                include_bytes!("../assets/fonts/NotoSans-Bold.ttf"),
+                include_bytes!("../assets/fonts/JetBrainsMonoNerdFont-Regular.ttf"),
+                include_bytes!("../assets/fonts/JetBrainsMonoNerdFont-Bold.ttf"),
+                include_bytes!("../assets/fonts/MaterialSymbolsRounded-termden.ttf"),
+            ]
+            .into_iter()
+            .map(std::borrow::Cow::Borrowed)
+            .collect(),
+        ) {
+            eprintln!("termden: could not load bundled fonts: {error}");
+        }
         let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
 
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
-            // Fully borderless: no OS titlebar, no client-side chrome. The
-            // panel header doubles as the window drag handle.
-            titlebar: None,
-            window_decorations: Some(WindowDecorations::Client),
+            // `title_bar` (config): the desktop's own title bar, or none (the
+            // panel header doubles as the drag handle). Desktops that never
+            // draw one (GNOME) get termden's own buttons; see `own_chrome`.
+            titlebar: Some(gpui::TitlebarOptions {
+                title: Some("termden".into()),
+                ..Default::default()
+            }),
+            window_decorations: Some(if config.title_bar.wanted() && server_decorations {
+                WindowDecorations::Server
+            } else {
+                WindowDecorations::Client
+            }),
             app_id: Some("termden".into()),
             window_background: WindowBackgroundAppearance::Opaque,
             window_min_size: Some(size(px(980.), px(600.))),
@@ -95,7 +123,11 @@ fn main() {
 
         cx.open_window(options, |window, cx| {
             let config = config.clone();
-            let app = cx.new(|cx| state::TermdenApp::new(config, mode, cx));
+            let app = cx.new(|cx| {
+                let mut app = state::TermdenApp::new(config, mode, cx);
+                app.server_decorations = server_decorations;
+                app
+            });
             window.focus(&app.read(cx).focus);
             app
         })

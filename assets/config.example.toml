@@ -6,3 +6,4 @@ font_size = 16.0           # terminal text; ctrl+shift +/-/0 adjusts it
 panel_width = 268.0
 gap = 12.0
 corner_radius = 12.0
+title_bar = "auto"         # "system", "none"; auto = none on tiling WMs (Hyprland, Sway, i3, niri)

@@ -35,6 +35,51 @@ impl ThemeId {
     }
 }
 
+/// Window title bar. `Auto` hides it under tiling window managers and asks
+/// the desktop for its own everywhere else.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TitleBar {
+    #[default]
+    Auto,
+    System,
+    None,
+}
+
+impl TitleBar {
+    pub const ALL: [TitleBar; 3] = [TitleBar::Auto, TitleBar::System, TitleBar::None];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            TitleBar::Auto => "Auto",
+            TitleBar::System => "System",
+            TitleBar::None => "None",
+        }
+    }
+
+    /// Whether a title bar is wanted, resolving `Auto` from the environment.
+    pub fn wanted(self) -> bool {
+        match self {
+            TitleBar::System => true,
+            TitleBar::None => false,
+            TitleBar::Auto => !tiling_wm(),
+        }
+    }
+}
+
+/// Tiling window managers place and size windows themselves; a title bar
+/// there is only clutter.
+fn tiling_wm() -> bool {
+    [
+        "HYPRLAND_INSTANCE_SIGNATURE",
+        "SWAYSOCK",
+        "I3SOCK",
+        "NIRI_SOCKET",
+    ]
+    .iter()
+    .any(|var| std::env::var_os(var).is_some_and(|v| !v.is_empty()))
+}
+
 /// User configuration, read from `$XDG_CONFIG_HOME/termden/config.toml`.
 ///
 /// Every field has a default so the file can stay tiny.
@@ -49,6 +94,7 @@ pub struct Config {
     pub panel_width: f32,
     pub gap: f32,
     pub corner_radius: f32,
+    pub title_bar: TitleBar,
 }
 
 impl Default for Config {
@@ -61,6 +107,7 @@ impl Default for Config {
             panel_width: 268.0,
             gap: 12.0,
             corner_radius: 12.0,
+            title_bar: TitleBar::Auto,
         }
     }
 }
