@@ -89,6 +89,7 @@ pub struct TermdenApp {
     pub focus: FocusHandle,
     pub activity: Vec<Activity>,
     pub activity_scroll: ScrollHandle,
+    pub activity_smooth: crate::widgets::SmoothScroll,
     /// Set when a line is logged; the feed then scrolls to the newest on render.
     pub activity_stick: std::cell::Cell<bool>,
     /// Workspace whose "add harness" picker is open.
@@ -110,6 +111,7 @@ pub struct TermdenApp {
     /// Theme chooser in settings (`None` = collapsed to one row).
     pub theme_browser: Option<crate::settings::ThemeBrowser>,
     pub theme_scroll: ScrollHandle,
+    pub theme_smooth: crate::widgets::SmoothScroll,
     /// List row to bring into view once the theme panel has laid out (GPUI
     /// can only scroll to rows it has measured).
     pub theme_scroll_to: std::cell::Cell<Option<usize>>,
@@ -203,6 +205,7 @@ impl TermdenApp {
             focus: cx.focus_handle(),
             activity: state.activity,
             activity_scroll: ScrollHandle::new(),
+            activity_smooth: Default::default(),
             activity_stick: std::cell::Cell::new(true),
             adding: None,
             confirm_remove: None,
@@ -214,6 +217,7 @@ impl TermdenApp {
             settings_open: false,
             theme_browser: None,
             theme_scroll: ScrollHandle::new(),
+            theme_smooth: Default::default(),
             theme_scroll_to: Default::default(),
             restart_pending: None,
             popups: Default::default(),
@@ -1202,7 +1206,7 @@ impl TermdenApp {
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
-        let panel = panel::render(self, cx);
+        let panel = panel::render(self, window, cx);
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
 

@@ -150,9 +150,9 @@ assets/config.example.toml  sample config
   spaces survive GPUI text layout. Keep `whitespace_nowrap()`.
 - Terminal content is bottom-anchored (`justify_end()`), like a real TUI.
 - One 120ms ticker in `state.rs` drives every spinner and cursor blink. Do not
-  add per-widget timers or animation loops. (Smooth scrolling was tried and
-  removed: every frame re-renders the one root view, ~40 ms in a debug
-  build, so 60 fps animation lags. It needs per-panel views first.)
+  add per-widget timers or animation loops. Only exception:
+  `widgets::SmoothScroll` (activity feed) requests animation frames while a
+  scroll glides, since GPUI 0.2.2 jumps whole wheel steps.
 - Palette colors live only in `theme.rs`. Do not hardcode hex values in panel,
   canvas or tile code; add a token instead.
 

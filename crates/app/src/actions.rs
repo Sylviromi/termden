@@ -167,10 +167,7 @@ impl TermdenApp {
         }
         // Follow new entries only when already at the bottom; someone
         // scrolled up to read must not be yanked away.
-        let scroll = &self.activity_scroll;
-        let at_bottom =
-            -f32::from(scroll.offset().y) >= f32::from(scroll.max_offset().height) - 4.0;
-        if at_bottom {
+        if self.activity_smooth.at_bottom(&self.activity_scroll) {
             self.activity_stick.set(true);
         }
         self.save();
