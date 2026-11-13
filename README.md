@@ -22,11 +22,21 @@ reattaches. Workspaces, layouts and focus persist in
 curl -fsSL https://raw.githubusercontent.com/Sylviromi/termden/main/scripts/install.sh | sh
 ```
 
-Installs `termden` and `termdenctl` into `~/.local/bin`, plus a launcher entry
+The script installs `termden` and `termdenctl` into `~/.local/bin`, plus a launcher entry
 and icon; no root and no Rust toolchain. Linux x86_64 (Wayland or X11, glibc
 2.35+). It also needs `tmux`, a Vulkan driver, `xdg-open`, and the fonts `Noto Sans`,
 `JetBrainsMono Nerd Font` and "Material Symbols Rounded"; the installer lists
 whatever is missing. `sh install.sh --uninstall` removes it again.
+
+With Rust (1.90+) instead, building from source:
+
+```sh
+cargo install --locked --git https://github.com/Sylviromi/termden termden-app termden-cli
+```
+
+(Debian/Ubuntu build deps: `libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+libvulkan-dev libfontconfig-dev libfreetype-dev libxcb1-dev pkg-config clang`.)
+Updates arrive the same way as below (or re-run the command).
 
 **Updates:** termden checks GitHub for a new release every few hours. When one
 is out, the sidebar footer shows **Update to vX.Y.Z**; click it (or run

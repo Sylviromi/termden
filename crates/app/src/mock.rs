@@ -18,7 +18,7 @@ pub fn build() -> AppState {
         Workspace {
             id: wsp,
             name: "termden".into(),
-            path: "/mnt/Projects/termden".into(),
+            path: "~/code/termden".into(),
             accent: 0,
             expanded: true,
             harnesses: vec![
