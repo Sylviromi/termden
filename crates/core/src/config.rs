@@ -3,35 +3,15 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// Which built-in palette to use.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ThemeId {
-    CatppuccinMocha,
-    Everforest,
-}
+/// Which theme to use, by id (e.g. `catppuccin-mocha`, `nord`). The app owns
+/// the list; an unknown id falls back to the default theme.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ThemeId(pub String);
 
 impl Default for ThemeId {
     fn default() -> Self {
-        Self::CatppuccinMocha
-    }
-}
-
-impl ThemeId {
-    pub const ALL: [ThemeId; 2] = [ThemeId::CatppuccinMocha, ThemeId::Everforest];
-
-    pub fn label(self) -> &'static str {
-        match self {
-            ThemeId::CatppuccinMocha => "Catppuccin Mocha",
-            ThemeId::Everforest => "Everforest",
-        }
-    }
-
-    pub fn next(self) -> Self {
-        match self {
-            ThemeId::CatppuccinMocha => ThemeId::Everforest,
-            ThemeId::Everforest => ThemeId::CatppuccinMocha,
-        }
+        Self("catppuccin-mocha".into())
     }
 }
 
@@ -100,7 +80,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            theme: ThemeId::CatppuccinMocha,
+            theme: ThemeId::default(),
             ui_font: "Noto Sans".to_string(),
             mono_font: "JetBrainsMono Nerd Font".to_string(),
             font_size: 16.0,

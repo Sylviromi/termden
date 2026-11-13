@@ -115,7 +115,7 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   mail-read <h>              JSON: unread messages for <h>, marked read
   log <h|0> <text>           post a line to the activity feed
   settings [close]           open (or close) the settings popup
-  theme                      cycle the colour theme
+  theme [id|list]            set a colour theme, list them, or cycle to the next
   reload                     save, detach, re-exec (harnesses keep running)";
 
 impl TermdenApp {
@@ -374,10 +374,22 @@ impl TermdenApp {
                 self.settings_open = arg != Some("close");
                 "ok".into()
             }
-            "theme" => {
-                self.cycle_theme();
-                format!("{:?}", self.config.theme).to_lowercase()
-            }
+            "theme" => match arg {
+                None => {
+                    self.cycle_theme();
+                    self.config.theme.0.clone()
+                }
+                Some("list") => crate::theme::all()
+                    .iter()
+                    .map(|t| format!("{:<22} {}", t.id, t.name))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                Some(id) if crate::theme::all().iter().any(|t| t.id == id) => {
+                    self.set_theme(id);
+                    id.into()
+                }
+                Some(id) => format!("error: unknown theme {id} (see `theme list`)"),
+            },
             "version" => match &self.update_available {
                 Some(tag) => format!("{} ({tag} available)", crate::update::VERSION),
                 None => crate::update::VERSION.into(),

@@ -1,24 +1,26 @@
 //! The settings popup: theme, text size and the shortcut reference.
 
 use gpui::{AnyElement, Context, FontWeight, div, prelude::*, px};
-use termden_core::{ThemeId, TitleBar};
+use termden_core::TitleBar;
 
 use crate::panel::tip;
 use crate::state::TermdenApp;
 use crate::theme::Theme;
-use crate::widgets::{ICON_FONT, icon_button, icons};
+use crate::widgets::{icon_button, icons};
 
 pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
     if !app.settings_open && !app.popups[crate::popup::SETTINGS].closing() {
         return None;
     }
     let theme = &app.theme;
+    // Never taller than the window (the theme list makes it long).
+    let height = (app.viewport.1 - 48.0).min(640.0);
 
     let card =
         div()
             .id("settings-card")
             .w(px(560.))
-            .max_h(px(640.))
+            .max_h(px(height))
             .flex()
             .flex_col()
             .rounded(px(14.))
@@ -58,7 +60,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                         }),
                     )),
                 crate::popup::SETTINGS,
-                (560., 640.),
+                (560., height),
                 cx,
             ))
             .child(
@@ -77,10 +79,10 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .flex()
                             .flex_col()
                             .gap(px(14.))
-                            .child(row("Theme", theme).child(theme_choices(app, cx)))
                             .child(row("Text size", theme).child(font_stepper(app, cx)))
                             .child(row("Title bar", theme).child(title_bar_choices(app, cx))),
                     ))
+                    .child(section("THEMES", theme, theme_choices(app, cx)))
                     .child(section(
                         "SHORTCUTS · CTRL+SHIFT +",
                         theme,
@@ -96,7 +98,8 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyEleme
                             .child(tip("V", "paste · drag to select and copy", theme))
                             .child(tip("+ −", "terminal text size (0 resets)", theme))
                             .child(tip(",", "open these settings", theme))
-                            .child(tip("R", "reload termden (rebuilds reload too)", theme)),
+                            .child(tip("R", "reload termden (rebuilds reload too)", theme))
+                            .child(tip("F11", "fullscreen (no ctrl+shift)", theme)),
                     )),
             );
 
@@ -149,64 +152,87 @@ fn row(label: &'static str, theme: &Theme) -> gpui::Div {
 
 fn theme_choices(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
+    let group = |dark: bool, cx: &mut Context<TermdenApp>| {
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                div()
+                    .text_size(theme.ui(9.5))
+                    .text_color(theme.overlay)
+                    .child(if dark { "Dark" } else { "Light" }),
+            )
+            .child(
+                div().flex().flex_wrap().gap(px(8.)).children(
+                    crate::theme::all()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, def)| def.dark == dark)
+                        .map(|(index, def)| theme_card(app, index, def.id, def.name, cx)),
+                ),
+            )
+    };
     div()
         .flex()
-        .gap(px(10.))
-        .children(ThemeId::ALL.into_iter().enumerate().map(|(index, id)| {
-            let preview = Theme::for_id(id, &app.config);
-            let selected = app.config.theme == id;
-            let swatch = |color| div().size(px(14.)).rounded(px(7.)).bg(color);
-            div()
-                .id(("theme-choice", index))
-                .flex()
-                .flex_col()
-                .gap(px(8.))
-                .w(px(150.))
-                .p(px(10.))
-                .rounded(px(10.))
-                .bg(preview.base)
-                .border_2()
-                .border_color(if selected {
-                    theme.accent(0)
-                } else {
-                    theme.text.opacity(0.08)
-                })
-                .cursor_pointer()
-                .hover(|style| style.opacity(0.85))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.set_theme(id);
-                    cx.notify();
-                }))
-                .child(
-                    div()
-                        .flex()
-                        .gap(px(5.))
-                        .child(swatch(preview.accent(0)))
-                        .child(swatch(preview.accent(1)))
-                        .child(swatch(preview.accent(2)))
-                        .child(swatch(preview.accent(3)))
-                        .child(swatch(preview.accent(4))),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .child(
-                            div()
-                                .flex_1()
-                                .text_size(theme.ui(10.5))
-                                .text_color(preview.text)
-                                .child(id.label()),
-                        )
-                        .children(selected.then(|| {
-                            div()
-                                .text_size(theme.ui(11.))
-                                .text_color(preview.accent(0))
-                                .font_family(ICON_FONT)
-                                .child(icons::CHECK)
-                        })),
-                )
+        .flex_col()
+        .gap(px(14.))
+        .child(group(true, cx))
+        .child(group(false, cx))
+        .into_any_element()
+}
+
+/// One theme: its background with five accent dots, and its name.
+fn theme_card(
+    app: &TermdenApp,
+    index: usize,
+    id: &'static str,
+    name: &'static str,
+    cx: &mut Context<TermdenApp>,
+) -> AnyElement {
+    let theme = &app.theme;
+    let preview = Theme::for_id(id, &app.config);
+    // Unknown ids fall back to the default, which then shows as selected.
+    let selected = crate::theme::theme_def(&app.config.theme.0).id == id;
+    let dot = |color| div().size(px(9.)).rounded(px(5.)).bg(color);
+    div()
+        .id(("theme-choice", index))
+        .w(px(152.))
+        .flex()
+        .flex_col()
+        .gap(px(6.))
+        .p(px(8.))
+        .rounded(px(8.))
+        .bg(preview.base)
+        .border_2()
+        .border_color(if selected {
+            theme.accent(0)
+        } else {
+            preview.text.opacity(0.10)
+        })
+        .cursor_pointer()
+        .hover(|style| style.opacity(0.85))
+        .on_click(cx.listener(move |this, _, _, cx| {
+            this.set_theme(id);
+            cx.notify();
         }))
+        .child(
+            div()
+                .flex()
+                .gap(px(4.))
+                .child(dot(preview.accent(0)))
+                .child(dot(preview.accent(1)))
+                .child(dot(preview.accent(2)))
+                .child(dot(preview.accent(3)))
+                .child(dot(preview.accent(4))),
+        )
+        .child(
+            div()
+                .truncate()
+                .text_size(theme.ui(10.))
+                .text_color(preview.text)
+                .child(name),
+        )
         .into_any_element()
 }
 

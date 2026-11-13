@@ -114,7 +114,7 @@ pub fn render_live(
             fg = fg.opacity(0.7);
         }
         if show_cursor && indexed.point == cursor.point {
-            (fg, bg) = (theme.base, Some(theme.text));
+            (fg, bg) = (theme.base, Some(theme.cursor));
         }
         let bold = cell.flags.contains(Flags::BOLD);
         let ch = if cell.c == ' ' || cell.flags.contains(Flags::HIDDEN) {

@@ -130,7 +130,7 @@ pub struct TermdenApp {
 
 impl TermdenApp {
     pub fn new(config: Config, mode: Mode, cx: &mut Context<Self>) -> Self {
-        let theme = Theme::for_id(config.theme, &config);
+        let theme = Theme::for_id(&config.theme.0, &config);
 
         let state = match mode {
             Mode::Demo => mock::build(),
@@ -818,7 +818,7 @@ impl TermdenApp {
 
     pub fn set_font_size(&mut self, size: f32) {
         self.config.font_size = size.clamp(8.0, 24.0);
-        self.theme = Theme::for_id(self.config.theme, &self.config);
+        self.theme = Theme::for_id(&self.config.theme.0, &self.config);
         if let Err(error) = self.config.save() {
             eprintln!("termden: could not save config: {error}");
         }
@@ -884,11 +884,11 @@ impl TermdenApp {
     }
 
     pub fn cycle_theme(&mut self) {
-        self.set_theme(self.config.theme.next());
+        self.set_theme(crate::theme::next_id(&self.config.theme.0));
     }
 
-    pub fn set_theme(&mut self, id: termden_core::ThemeId) {
-        self.config.theme = id;
+    pub fn set_theme(&mut self, id: &str) {
+        self.config.theme = termden_core::ThemeId(id.into());
         self.theme = Theme::for_id(id, &self.config);
         if let Err(error) = self.config.save() {
             eprintln!("termden: could not save config: {error}");
@@ -1154,7 +1154,13 @@ impl TermdenApp {
             .bg(self.theme.crust)
             .font_family(self.theme.ui_font.clone())
             .track_focus(&self.focus)
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                // F11 fullscreens the window (the terminals never see it).
+                if event.keystroke.key == "f11" && !event.keystroke.modifiers.modified() {
+                    window.toggle_fullscreen();
+                    cx.stop_propagation();
+                    return;
+                }
                 if this.on_key_down(event, cx) {
                     cx.stop_propagation();
                     cx.notify();

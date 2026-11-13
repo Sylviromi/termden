@@ -174,7 +174,7 @@ Vulkan ICD (`lvp_icd.json`).
 - Click a harness (panel or tile) to focus its tile with the workspace accent.
 - Drag a tile by its header: edge zones split, centre swaps. The dwindle tree
   mutates for real, in memory.
-- The settings popup (gear in the panel header, or ctrl+shift+,) switches Catppuccin Mocha ↔ Everforest, sets text size, lists shortcuts, and persists the
+- The settings popup (gear in the panel header, or ctrl+shift+,) picks one of 51 themes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Rosé Pine, Kanagawa, GitHub, Solarized, … dark and light), sets text size, lists shortcuts, and persists the
   choice to `~/.config/termden/config.toml`.
 - Tiles resize their tmux session; typing goes to the focused tile.
   `tmux -L termden ls` lists them; `tmux -L termden kill-server` resets them.
@@ -204,7 +204,7 @@ Claude Code and opencode tiles started by termden get a `termden` MCP server
 `$XDG_CONFIG_HOME/termden/config.toml` (defaults shown):
 
 ```toml
-theme = "catppuccin-mocha"   # or "everforest"
+theme = "catppuccin-mocha"   # `termdenctl theme list` shows all ids
 ui_font = "Noto Sans"
 mono_font = "JetBrainsMono Nerd Font"
 font_size = 16.0             # terminal text; ctrl+shift +/-/0

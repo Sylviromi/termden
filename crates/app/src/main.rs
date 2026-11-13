@@ -27,6 +27,7 @@ mod settings;
 mod state;
 mod terminal;
 mod theme;
+mod themes;
 mod tile;
 mod update;
 mod widgets;

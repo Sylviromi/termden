@@ -209,13 +209,18 @@ assets/config.example.toml  sample config
 
 ### Themes
 
-To add a palette:
+51 themes (36 dark, 15 light) live in the generated `app/src/themes.rs`.
+To add one: put its Ghostty theme file name, id and display name in
+`THEMES` in `scripts/gen-themes.py` and rerun it (it reads
+`/usr/share/ghostty/themes`, the iTerm2-Color-Schemes collection).
 
-1. Add a variant to `ThemeId` in `core::config` (kebab-case serde rename).
-2. Add it to `ThemeId::ALL`, `label()`, `next()`.
-3. Add a `Palette` constructor in `app/src/theme.rs` and wire the match.
-4. Keep the accent array order: primary accent first; each workspace stores an
-   index into it.
+- `ThemeId` is the theme's id string; unknown ids fall back to the first.
+- `theme::derive` builds the UI palette from background/foreground/ANSI:
+  shades are mixes, accents come from ANSI and are pushed to readable
+  contrast (`readable`); terminals use the theme's own 16 colors and cursor.
+- Catppuccin Mocha and Everforest keep hand-tuned palettes (`for_id`).
+- `theme::tests::every_theme_is_usable` checks ids, contrast and cycling;
+  keep it passing. Keep the accent order: workspaces store an index into it.
 
 ## Gotchas (learned the hard way)
 
