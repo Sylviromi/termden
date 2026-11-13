@@ -106,6 +106,8 @@ pub struct TermdenApp {
     pub cell: (f32, f32),
     /// Tile and button of an in-progress terminal mouse press.
     mouse_press: Option<(HarnessId, u8, (u16, u16))>,
+    /// Link under the pointer while ctrl is held: (tile, row, start col, cells).
+    hover_url: Option<(HarnessId, u16, u16, u16)>,
     scroll_lines: f32,
     /// Our own binary and its mtime at startup, for reload-on-rebuild.
     pub(crate) exe: Option<(PathBuf, SystemTime)>,
@@ -195,6 +197,7 @@ impl TermdenApp {
             viewport: (0.0, 0.0),
             cell: (7.2, 19.0),
             mouse_press: None,
+            hover_url: None,
             scroll_lines: 0.0,
             exe,
             started: Instant::now(),
@@ -587,11 +590,46 @@ impl TermdenApp {
         ))
     }
 
+    /// Track the link a ctrl+click would open, for the hover underline.
+    fn update_hover_url(&mut self, ctrl: bool, position: Point<Pixels>) {
+        let (x, y) = (f32::from(position.x), f32::from(position.y));
+        self.hover_url = ctrl
+            .then(|| self.tile_rects.iter().find(|(_, r)| r.contains(x, y)))
+            .flatten()
+            .and_then(|&(id, _)| {
+                let (col, row) = self.cell_at(id, position)?;
+                let (start, len, _) = self.sessions.get(&id)?.url_at(col, row)?;
+                Some((id, row, start, len))
+            });
+    }
+
+    /// Underline (and hand cursor) over the hovered link.
+    fn hover_url_element(&self) -> Option<AnyElement> {
+        let (id, row, start, len) = self.hover_url?;
+        let (_, rect) = self.tile_rects.iter().find(|(tile, _)| *tile == id)?;
+        let session = self.sessions.get(&id)?;
+        let (x, y) = tile::content_origin(*rect, session.rows, self.cell.1);
+        Some(
+            div()
+                .id("hover-url")
+                .absolute()
+                .left(px(x + f32::from(start) * self.cell.0))
+                .top(px(y + f32::from(row) * self.cell.1))
+                .w(px(f32::from(len) * self.cell.0))
+                .h(px(self.cell.1))
+                .border_b_1()
+                .border_color(self.theme.blue)
+                .cursor_pointer()
+                .into_any_element(),
+        )
+    }
+
     /// Ctrl+click: open the URL under the pointer instead of clicking into tmux.
     pub fn open_url_at(&self, id: HarnessId, position: Point<Pixels>) -> bool {
         let Some(url) = self
             .cell_at(id, position)
             .and_then(|(col, row)| self.sessions.get(&id)?.url_at(col, row))
+            .map(|(_, _, url)| url)
         else {
             return false;
         };
@@ -1007,8 +1045,15 @@ impl Render for TermdenApp {
                     this.terminal_mouse_drag(event.position);
                 }
                 this.on_mouse_move(event.position, window);
+                this.update_hover_url(event.modifiers.control, event.position);
                 cx.notify();
             }))
+            .on_modifiers_changed(cx.listener(
+                |this, event: &gpui::ModifiersChangedEvent, window, cx| {
+                    this.update_hover_url(event.modifiers.control, window.mouse_position());
+                    cx.notify();
+                },
+            ))
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseUpEvent, _, cx| {
@@ -1064,6 +1109,7 @@ impl Render for TermdenApp {
                         }),
                     ),
             )
+            .children(self.hover_url_element())
             .children(crate::settings::render(self, cx))
             .children(ghost)
     }
