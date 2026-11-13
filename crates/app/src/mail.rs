@@ -123,7 +123,13 @@ impl TermdenApp {
             {
                 continue;
             }
-            session.inject(b"[termden] New message"[..].to_vec());
+            let Some(nudge) = nudge(&self.mail, id) else {
+                continue;
+            };
+            let Some(session) = self.sessions.get_mut(&id) else {
+                continue;
+            };
+            session.inject(nudge.into_bytes());
             self.mail_notified.insert(id, unread);
             let sent = Instant::now();
             // Separate keystroke so TUIs submit instead of treating it as a paste.
@@ -144,5 +150,54 @@ impl TermdenApp {
             })
             .detach();
         }
+    }
+}
+
+/// "📬 sender: first words of the newest unread mail… (+N more)". Control
+/// characters are dropped: mail text is typed into a terminal.
+fn nudge(mail: &[Mail], to: HarnessId) -> Option<String> {
+    let unread: Vec<&Mail> = mail.iter().filter(|m| m.to == to && !m.read).collect();
+    let last = unread.last()?;
+    let text: String = last
+        .text
+        .chars()
+        .map(|c| if c.is_whitespace() { ' ' } else { c })
+        .filter(|c| !c.is_control())
+        .collect();
+    let mut preview: String = text.chars().take(60).collect();
+    if text.chars().count() > 60 {
+        preview.push('…');
+    }
+    let from: String = last.from.chars().filter(|c| !c.is_control()).collect();
+    let more = match unread.len() {
+        1 => String::new(),
+        n => format!(" (+{} more)", n - 1),
+    };
+    Some(format!("📬 {from}: {preview}{more}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nudge_previews_newest_unread() {
+        let to = HarnessId::new(7);
+        let m = |text: &str, read| Mail {
+            to,
+            from: "user".into(),
+            text: text.into(),
+            read,
+        };
+        assert_eq!(nudge(&[m("old", true)], to), None);
+        assert_eq!(
+            nudge(&[m("a", false), m("line\none\x1b[2J", false)], to).as_deref(),
+            Some("📬 user: line one[2J (+1 more)")
+        );
+        let long = "x".repeat(70);
+        assert_eq!(
+            nudge(&[m(&long, false)], to),
+            Some(format!("📬 user: {}…", "x".repeat(60)))
+        );
     }
 }
