@@ -23,11 +23,13 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
 1. Edit code. When termden runs under `scripts/dev.sh` (`dx serve
    --hot-patch`), saving the file is enough: function bodies are patched into
    the running app within seconds, no restart. Struct fields, startup code and
-   `termden-core` make dx rebuild and relaunch it (tiles reattach); errors go
-   to `$XDG_STATE_HOME/termden/dx.log`. A plain `target/debug/termden` instead
-   reloads when `cargo build -p termden -p termdenctl` replaces it.
+   `termden-core` make dx rebuild and relaunch it (tiles reattach); errors show
+   in `tmux -L termden attach -t termden-dx`; `termdenctl reload` there means
+   full rebuild + relaunch (needed after struct changes). A plain `target/debug/termden` instead
+   reloads when `cargo build -p termden` replaces it.
    Either way your own process survives: it lives in tmux. Build
-   `termdenctl` yourself after changing it; dx only serves the app.
+   `termdenctl` yourself after changing it (`cargo build -p termden --bin
+   termdenctl`); dx only serves the app.
    Long-lived tasks reach code through `hot!(...)` (main.rs) so patches apply
    there too; use it for any new background loop or socket handler.
 2. Check the result without touching the desktop:
@@ -96,7 +98,7 @@ sprites, and tile overflow. Do not ship a visual change without a headless shot.
 Cargo.toml                 workspace, gpui 0.2.2, libc pin
 crates/core/               no GPUI: ids, Harness/Workspace/Subagent, dwindle
                            tree (LayoutNode), Config + ThemeId
-crates/app/                GPUI binary `termden`
+crates/app/                package `termden`: GPUI binary `termden` + `termdenctl`
   main.rs                  Application::new(), borderless WindowOptions
   state.rs                 TermdenApp, sessions, input, 120ms frame ticker
   actions.rs               workspace/harness CRUD, persistence, hot reload
@@ -115,9 +117,9 @@ crates/app/                GPUI binary `termden`
   update.rs                GitHub release check, footer offer, binary swap
                            (installed copies only; reload does the rest)
   widgets.rs               dots, badges, pills, spinner, icon buttons
+  bin/termdenctl/          second binary of the same package: socket client,
+                           screenshot, `mail`, `mcp` stdio server
 crates/daemon/              bin `termdend` (stub)
-crates/cli/                 bin `termdenctl` (socket client, screenshot,
-                           `mail`, `mcp` stdio server)
 scripts/headless-shot.sh    private Weston compositor + capture
 scripts/install.sh          curl | sh installer for the latest release
 .github/workflows/release.yml  tag v* -> release tarball

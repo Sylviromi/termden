@@ -15,6 +15,11 @@ description = "Workspaces and tiled terminals for coding agents (Claude Code, op
 name = "termden"
 path = "src/main.rs"
 
+# The control CLI and MCP server; termden needs it on PATH for its agents.
+[[bin]]
+name = "termdenctl"
+path = "src/bin/termdenctl/main.rs"
+
 [dependencies]
 termden-core.workspace = true
 gpui.workspace = true

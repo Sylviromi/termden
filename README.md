@@ -37,7 +37,7 @@ paru -S termden-bin        # or yay -S termden-bin; updates come with -Syu
 With Rust (1.90+), building from source:
 
 ```sh
-cargo install --locked termden termdenctl
+cargo install --locked termden    # installs termden and termdenctl
 ```
 
 (Debian/Ubuntu build deps: `libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
@@ -75,7 +75,7 @@ stay. Edits that cannot be patched (struct fields, startup code,
 and reattach, including the agent editing the code. The first build takes
 several minutes and keeps its own artifacts under `target/`.
 
-Without dx, run a plain build (`cargo build -p termden -p termdenctl &&
+Without dx, run a plain build (`cargo build -p termden &&
 target/debug/termden`): it watches its own binary and execs into each rebuild,
 closing the window briefly. `ctrl+shift+r` reloads by hand.
 
@@ -206,7 +206,8 @@ The settings popup writes the same file. Icons use the system font "Material Sym
 ```
 crates/
   core/    domain types, dwindle tree, config — no GPUI dependency
-  app/     GPUI front end (this skeleton)
+  app/     package `termden`: the app, plus `termdenctl` (src/bin) for
+           humans and agents; GPUI front end
     theme.rs    palette + fonts, Catppuccin and Everforest
     mock.rs     the demo fleet (`--demo`)
     state.rs    app state, sessions, input, frame ticker
@@ -219,7 +220,6 @@ crates/
     terminal.rs terminal grid renderer + demo buffers
     widgets.rs  dots, badges, pills, spinner
   daemon/  stub — will own tmux sessions, PTYs, socket, MCP
-  cli/     `termdenctl` for humans and agents
 ```
 
 `core` holds no GPUI types so the daemon, CLI and MCP server can reuse the same

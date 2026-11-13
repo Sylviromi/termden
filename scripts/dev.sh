@@ -12,7 +12,7 @@
 #        `termdenctl reload` (or ctrl+shift+r) = full rebuild + relaunch;
 #        needed after changing struct fields, which dx would patch unsafely.
 # Needs: cargo install dioxus-cli --version 0.7.10 --locked
-# Without dx: cargo build -p termden -p termdenctl && target/debug/termden
+# Without dx: cargo build -p termden && target/debug/termden
 #   (a plain build execs into its rebuilt binary, closing the window briefly).
 
 set -uo pipefail
@@ -36,7 +36,7 @@ fi
 DX="$(command -v dx || echo "$HOME/.cargo/bin/dx")"
 [ -x "$DX" ] || { echo "dev.sh: needs dx: cargo install dioxus-cli --version 0.7.10 --locked" >&2; exit 1; }
 # Tiles get termdenctl from here; dx builds termden into its own directory.
-cargo build -q -p termdenctl || exit 1
+cargo build -q -p termden --bin termdenctl || exit 1
 
 # dx runs interactively in a tmux session next to the tiles, so `termdenctl
 # reload` can press its `r` (full rebuild + relaunch) and you can watch it:
