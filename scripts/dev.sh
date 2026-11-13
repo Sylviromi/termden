@@ -48,12 +48,11 @@ say() {
     command -v notify-send >/dev/null && notify-send -a termden -i termden "termden" "$1"
 }
 if tmux -L "$SOCK" has-session -t termden-dx 2>/dev/null; then
-    # dx outlives a closed window; `o` reopens the app without rebuilding.
-    focus || {
-        tmux -L "$SOCK" send-keys -t termden-dx o
-        say "Reopening termden."
-    }
-    exit 0
+    # A dx whose app window was closed cannot be trusted to reopen it (it
+    # loses track of its build); start a clean one instead.
+    focus && exit 0
+    tmux -L "$SOCK" kill-session -t termden-dx
+    sleep 1
 fi
 ENV=(-e "TERMDEN_BIN_DIR=$ROOT/target/debug" -e "TERMDEN_TMUX_SOCKET=$SOCK")
 for var in PATH WAYLAND_DISPLAY DISPLAY XDG_RUNTIME_DIR TERMDEN_CONTROL_SOCKET \
@@ -62,5 +61,5 @@ for var in PATH WAYLAND_DISPLAY DISPLAY XDG_RUNTIME_DIR TERMDEN_CONTROL_SOCKET \
 done
 tmux -L "$SOCK" new-session -d -s termden-dx -x 160 -y 48 -c "$ROOT" "${ENV[@]}" \
     "$DX serve --hot-patch --platform linux -p termden-app --bin termden --features hotpatch"
-say "Starting under dx (about 10s, minutes after a dependency change)."
+say "Starting termden (about 15s; minutes after a dependency change)."
 echo "Watch it: tmux -L $SOCK attach -t termden-dx"
