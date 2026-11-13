@@ -351,9 +351,6 @@ fn theme_panel(
             cx.notify(); // not laid out yet: try again next frame
         }
     }
-    if app.theme_smooth.step(&app.theme_scroll) {
-        cx.notify();
-    }
     let header = |text: &'static str| {
         div()
             .w_full()

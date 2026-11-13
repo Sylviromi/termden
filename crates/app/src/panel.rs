@@ -1,6 +1,6 @@
 use gpui::{
-    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, Window,
-    div, prelude::*, px,
+    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, div,
+    prelude::*, px,
 };
 use termden_core::{Activity, Harness, HarnessKind, Workspace};
 
@@ -10,7 +10,7 @@ use crate::widgets::{
     ICON_FONT, dot, hspacer, icon_button, icons, kind_badge, pill, spinner, spinner_frame, tag_pill,
 };
 
-pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp>) -> AnyElement {
+pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
     let radius = app.config.corner_radius;
 
@@ -30,7 +30,7 @@ pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp
         .children(restart_banner(app, cx))
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
-        .child(activity(app, window))
+        .child(activity(app))
         .child(footer(app, cx))
         .into_any_element()
 }
@@ -264,13 +264,10 @@ fn section_header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement 
         .into_any_element()
 }
 
-fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
+fn activity(app: &TermdenApp) -> AnyElement {
     let theme = &app.theme;
     if app.activity_stick.replace(false) {
         app.activity_scroll.scroll_to_bottom();
-    }
-    if app.activity_smooth.step(&app.activity_scroll) {
-        window.request_animation_frame();
     }
 
     div()
