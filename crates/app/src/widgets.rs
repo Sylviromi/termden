@@ -1,4 +1,9 @@
-use gpui::{Div, ElementId, FontWeight, Hsla, SharedString, Stateful, div, prelude::*, px};
+use std::cell::Cell;
+
+use gpui::{
+    Div, ElementId, FontWeight, Hsla, ScrollHandle, SharedString, Stateful, Window, div, point,
+    prelude::*, px,
+};
 use termden_core::HarnessKind;
 
 use crate::theme::Theme;
@@ -128,4 +133,47 @@ pub fn spinner(theme: &Theme, color: Hsla, tick: u64) -> Div {
         .font_family(theme.mono_font.clone())
         .text_size(theme.ui(10.))
         .child(spinner_frame(tick))
+}
+
+/// Smooth scrolling for a GPUI scroll container. GPUI moves a whole wheel
+/// step (three lines) at once; `step` takes where GPUI put it as the target
+/// and eases the visible offset there over a few frames. Call it from render,
+/// before the container lays out, every frame.
+///
+/// Animation frames are requested only while gliding (the one exception to
+/// "the 120ms ticker drives all animation": scrolling must follow at 60fps).
+#[derive(Default)]
+pub struct SmoothScroll {
+    target: Cell<f32>,
+    shown: Cell<f32>,
+}
+
+impl SmoothScroll {
+    pub fn step(&self, handle: &ScrollHandle, window: &mut Window) {
+        let now = f32::from(handle.offset().y);
+        let shown = self.shown.get();
+        let max = f32::from(handle.max_offset().height);
+        if now != shown {
+            // The wheel (or scroll_to_bottom) moved it since our last frame.
+            self.target
+                .set((self.target.get() + now - shown).clamp(-max, 0.0));
+        }
+        let target = self.target.get().clamp(-max, 0.0);
+        let mut next = shown + (target - shown) * 0.3;
+        if (target - next).abs() < 0.5 {
+            next = target;
+        }
+        if next != now {
+            handle.set_offset(point(handle.offset().x, px(next)));
+        }
+        self.shown.set(next);
+        if next != target {
+            window.request_animation_frame();
+        }
+    }
+
+    /// Whether the glide is headed for (or at) the bottom.
+    pub fn at_bottom(&self, handle: &ScrollHandle) -> bool {
+        -self.target.get() >= f32::from(handle.max_offset().height) - 4.0
+    }
 }

@@ -1,6 +1,6 @@
 use gpui::{
-    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, div,
-    prelude::*, px,
+    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, Window,
+    div, prelude::*, px,
 };
 use termden_core::{Activity, Harness, HarnessKind, Workspace};
 
@@ -10,7 +10,7 @@ use crate::widgets::{
     ICON_FONT, dot, hspacer, icon_button, icons, kind_badge, pill, spinner, spinner_frame, tag_pill,
 };
 
-pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
     let radius = app.config.corner_radius;
 
@@ -30,7 +30,7 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         .children(restart_banner(app, cx))
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
-        .child(activity(app))
+        .child(activity(app, window))
         .child(footer(app, cx))
         .into_any_element()
 }
@@ -264,11 +264,12 @@ fn section_header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement 
         .into_any_element()
 }
 
-fn activity(app: &TermdenApp) -> AnyElement {
+fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
     let theme = &app.theme;
     if app.activity_stick.replace(false) {
         app.activity_scroll.scroll_to_bottom();
     }
+    app.activity_smooth.step(&app.activity_scroll, window);
 
     div()
         .flex()
@@ -466,6 +467,9 @@ fn workspace_card(
     let active = workspace.id == app.active;
     let hover_bg = theme.surface0.opacity(0.32);
     let id = workspace.id;
+    // Collapsed and empty workspaces show no harness list, whose padding
+    // otherwise spaces the card's bottom; the header pads it instead.
+    let list = workspace.expanded && !workspace.harnesses.is_empty();
 
     div()
         .id(ElementId::named_usize("workspace", id.raw() as usize))
@@ -490,6 +494,7 @@ fn workspace_card(
                 .h(px(46.))
                 .px(px(7.))
                 .mt(px(6.))
+                .mb(px(if list { 0. } else { 6. }))
                 .gap(px(5.))
                 .child(
                     div()
@@ -605,7 +610,7 @@ fn workspace_card(
         )
         .children((app.adding == Some(id)).then(|| kind_picker(app, workspace, cx)))
         .children((app.confirm_remove == Some(id)).then(|| confirm_remove(app, workspace, cx)))
-        .children(workspace.expanded.then(|| {
+        .children(list.then(|| {
             div()
                 .flex()
                 .flex_col()

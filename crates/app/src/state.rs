@@ -89,6 +89,7 @@ pub struct TermdenApp {
     pub focus: FocusHandle,
     pub activity: Vec<Activity>,
     pub activity_scroll: ScrollHandle,
+    pub activity_smooth: crate::widgets::SmoothScroll,
     /// Set when a line is logged; the feed then scrolls to the newest on render.
     pub activity_stick: std::cell::Cell<bool>,
     /// Workspace whose "add harness" picker is open.
@@ -200,6 +201,7 @@ impl TermdenApp {
             focus: cx.focus_handle(),
             activity: state.activity,
             activity_scroll: ScrollHandle::new(),
+            activity_smooth: Default::default(),
             activity_stick: std::cell::Cell::new(true),
             adding: None,
             confirm_remove: None,
@@ -1199,7 +1201,7 @@ impl TermdenApp {
         self.sync_sessions(cx);
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
-        let panel = panel::render(self, cx);
+        let panel = panel::render(self, window, cx);
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
 
