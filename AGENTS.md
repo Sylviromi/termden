@@ -12,7 +12,7 @@ opencode, pi, or a plain shell.
 client in a PTY, parsed by `alacritty_terminal`). State persists in
 `$XDG_STATE_HOME/termden/state.json`; the mock fleet is `--demo`. The app
 hot-reloads when its binary is rebuilt and exposes a control socket for
-`termdenctl`. No adapters, daemon or MCP yet; `daemon/` is a stub.
+`termdenctl`. No adapters or daemon yet (a future `termdend` would own the sessions).
 
 ## Working on termden from inside termden
 
@@ -119,7 +119,6 @@ crates/app/                package `termden`: GPUI binary `termden` + `termdenct
   widgets.rs               dots, badges, pills, spinner, icon buttons
   bin/termdenctl/          second binary of the same package: socket client,
                            screenshot, `mail`, `mcp` stdio server
-crates/daemon/              bin `termdend` (stub)
 scripts/headless-shot.sh    private Weston compositor + capture
 scripts/install.sh          curl | sh installer for the latest release
 .github/workflows/release.yml  tag v* -> release tarball

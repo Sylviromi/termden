@@ -138,7 +138,7 @@ Enter on an exited tile restarts it.
 2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
    `.github/workflows/release.yml` tests, builds on Ubuntu 22.04 and publishes
    `termden-x86_64-linux.tar.gz`; installed copies offer it in the footer.
-3. crates.io: `cargo publish --workspace --exclude termden-daemon`.
+3. crates.io: `cargo publish --workspace`.
 4. AUR: in `packaging/aur/termden-bin`, set `pkgver`, run `updpkgsums` and
    `makepkg --printsrcinfo > .SRCINFO`, then push both to the AUR repo.
 
@@ -241,7 +241,6 @@ crates/
     tile.rs     tile chrome and drop zones
     terminal.rs terminal grid renderer + demo buffers
     widgets.rs  dots, badges, pills, spinner
-  daemon/  stub — will own tmux sessions, PTYs, socket, MCP
 ```
 
 `core` holds no GPUI types so the daemon, CLI and MCP server can reuse the same
