@@ -582,7 +582,10 @@ fn limits(app: &TermdenApp) -> AnyElement {
             div()
                 .text_size(theme.ui(9.))
                 .text_color(theme.overlay)
-                .child("Shown once a Claude or opencode Go agent has replied.")
+                .child(
+                    "Claude reports limits only to tiles started by this version: open a \
+                     new Claude tile. opencode Go shows while an opencode tile is open.",
+                )
         }))
         .into_any_element()
 }
@@ -609,7 +612,7 @@ fn meter(limit: &Limit, now: u64, theme: &Theme) -> Div {
         .child(
             div()
                 .flex()
-                .items_baseline()
+                .items_center()
                 .gap(px(8.))
                 .child(
                     div()
@@ -719,7 +722,9 @@ fn summary(
         .child(
             div()
                 .flex()
-                .items_baseline()
+                // GPUI 0.2.2 does not honour baseline alignment: sit the label
+                // on the number's baseline by hand.
+                .items_end()
                 .gap(px(8.))
                 .child(
                     div()
@@ -735,6 +740,7 @@ fn summary(
                 )
                 .child(
                     div()
+                        .pb(theme.ui(4.))
                         .text_size(theme.ui(9.5))
                         .text_color(theme.overlay)
                         .child("tokens"),
