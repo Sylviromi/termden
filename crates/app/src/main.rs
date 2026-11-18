@@ -12,6 +12,7 @@ mod pty;
 mod settings;
 mod showcase;
 mod state;
+mod stats;
 mod terminal;
 mod theme;
 mod themes;

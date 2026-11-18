@@ -51,6 +51,7 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
    configuration (`claude --settings <file>`, `OPENCODE_CONFIG`, env vars).
 6. **Agents may not move or resize tiles.** That is a deliberate permission
    boundary in the product design, not a UI limitation.
+7. **Tautological labels, tests, and UI components are considered harmful.**
 
 ## Git
 
@@ -73,6 +74,7 @@ cargo build -p termden
 
 scripts/dev.sh                    # build + start termden (or focus it); launcher entry
 termdenctl state|screen [h]|add <kind>|reload|screenshot [out.png]
+termdenctl stats [on|off]         # tokens/MCP/uptime JSON, or show the pane
 
 # Headless render + capture; touches no real display:
 ./scripts/headless-shot.sh [out.png] [width] [height]
@@ -91,12 +93,14 @@ sprites, and tile overflow. Do not ship a visual change without a headless shot.
 ```
 Cargo.toml                 workspace, gpui 0.2.2, libc pin
 crates/core/               no GPUI: ids, Harness/Workspace/Subagent, dwindle
-                           tree (LayoutNode), Config + ThemeId
+                           tree (LayoutNode), Config + ThemeId, stats readers
 crates/app/                package `termden`: GPUI binary `termden` + `termdenctl`
   main.rs                  Application::new(), borderless WindowOptions
   state.rs                 TermdenApp, sessions, input, 120ms frame ticker
   actions.rs               workspace/harness CRUD, persistence, hot reload
   control.rs               control socket (`termdenctl` commands; `HELP`)
+  stats.rs                 per-workspace token/MCP/uptime cache (background)
+                           and the right-hand stats pane
   theme.rs                 Catppuccin Mocha + Everforest palettes/fonts
   mock.rs                  the demo fleet (3 workspaces, 8 harnesses)
   panel.rs                 workspace tree, activity feed, tips, footer
@@ -129,9 +133,12 @@ assets/config.example.toml  sample config
 ### Geometry
 
 - Panel width, gap and radii come from `Config` (defaults 268 / 12 / 12).
-- `canvas::canvas_rect(config, viewport)` is the single source of truth for
-  where the tiled area starts. Tiles are positioned absolutely in that space;
-  `canvas::layout_rects` recursively splits it using `LayoutNode`.
+- `canvas::canvas_rect(config, viewport, inset)` is the single source of truth
+  for where the tiled area starts. `inset` is room reserved on the right (the
+  stats pane plus its gap, see `TermdenApp::canvas_rect`); rendering, focus,
+  hit-testing and `visible_tiles` all go through it. Tiles are positioned
+  absolutely in that space; `canvas::layout_rects` recursively splits it using
+  `LayoutNode`.
 - Drop hit-testing uses the same rects as rendering. If you change gaps or
   panel width, both the drawing and `TermdenApp::hit_test` move together
   automatically — do not introduce a second calculation.
@@ -181,6 +188,65 @@ assets/config.example.toml  sample config
   `pty::key_bytes` is the xterm translation (unit-tested).
 - Terminal colors resolve through `Theme::term_color` (16 ANSI slots built
   from palette tokens, xterm 256 cube computed).
+
+### Stats
+
+- The right-hand stats pane (`app/src/stats.rs`) shows plan limits on top
+  (per provider account, so the same in every workspace), then the **active**
+  workspace: total tokens with a cached/in/out split, one row per agent
+  (tokens, context fill, uptime) and the MCP servers enabled for its tiles.
+  Shells are not agents: they are left out of the pane, `termdenctl stats`
+  and the activity feed (`log_harness` drops them). Everything but the header
+  and the MCP block scrolls, so short windows still reach the agents. The
+  sidebar footer's STATS button toggles it; the choice lives in
+  `Config::stats_open`. Collection covers every workspace, so switching costs
+  no wait.
+- Plan limits are read, never guessed. Claude: the status line input
+  (`rate_limits.five_hour` / `seven_day`, plus `context_window`), saved by
+  `termdenctl statusline <dir>/status.json`, which termden sets as the tile's
+  `statusLine` in its `--settings` and which then runs the user's own
+  `statusLine` command (project, then user settings). The newest file across
+  Claude tiles wins. opencode Go: `opencode api --standalone GET
+  /api/experimental/usage/limits` (opencode holds the key), at most once a
+  minute and only while an opencode tile exists. Never read provider
+  credentials from termden.
+- Numbers are read, never counted by termden: Claude Code transcripts
+  (`~/.claude/projects/*/<session>.jsonl`, summed per assistant message id) and
+  opencode's `opencode.db` token columns (`session_v2`, falling back to
+  `session`). Shells and pi report none. `core/src/stats.rs` holds all parsing
+  and stays GPUI-free.
+- Claude's launch settings carry a `SessionStart` hook,
+  `termdenctl session-hook <dir>/session.id`, which appends each new session
+  id (start, `/clear`, `--resume`) to
+  `$XDG_RUNTIME_DIR/termden/harness/<id>/session.id`. A tile's usage is the
+  sum over every session it went through, so `/clear` does not erase what the
+  cleared conversation cost. The hook must print nothing (its stdout reaches
+  the agent's context). Subagent transcripts in `<session>/subagents/` count
+  too, deduplicated by message id across files.
+- opencode gets **no** session flag: given an unknown `--session`, its TUI
+  ignores the id and resumes the previous session (which also reuses that
+  session's instructions). Its sessions are found in `opencode.db` by the
+  per-harness instructions path recorded in `instruction_state` +
+  `instruction_blob` (`stats::opencode_sessions`), every match since the tmux
+  session started, so `/new` adds one.
+- Token split: "in" is uncached input plus cache writes
+  (`Usage::fresh_input`), "cached" is cache reads, the big figure is
+  everything. Claude's `input_tokens` alone is near zero with caching on.
+- Collection runs on the background executor every 5s (`stats::watch`), never
+  on the UI thread: a long Claude transcript is read incrementally by offset and
+  deduplicated by message id. Uptime comes from one `tmux list-sessions -F
+  '#{session_name} #{session_created}'` call and so survives app restarts.
+- MCP names come from the per-process config termden writes, the project
+  files the agent loads (`.mcp.json`, `opencode.json[c]`), `~/.claude.json`
+  (user scope and the tile's project scope) and the `.mcp.json` / manifest of
+  Claude plugins enabled in `~/.claude/settings.json`. claude.ai connectors and
+  servers only `opencode mcp list` sees are not listed; do not claim the list
+  is exhaustive.
+- `termdenctl stats` returns the same data as JSON (`plans`, per-agent
+  `context_percent`); `stats on|off` toggles the pane. Keep the JSON and the
+  pane in sync.
+- The pane reserves `stats::width(viewport) + gap` (260–360px) on the right through
+  `TermdenApp::canvas_rect`; tiles are re-flowed, not covered.
 
 ### State and interaction
 
@@ -302,6 +368,8 @@ To add one: put its Ghostty theme file name, id and display name in
 - `cargo fmt` applied.
 - Headless screenshot inspected at 1440x900 and, if layout is involved, at
   980x600 (minimum window size).
+- Stats pane: the demo fleet shows tokens, cache, MCPs and uptime at both
+  sizes; `termdenctl stats` is non-null for a tile started after this change.
 - Mock fleet still demonstrates every state: working, idle, needs-input, error,
   unread mail, live subagents.
 - README / AGENTS.md updated when commands or conventions change.

@@ -16,6 +16,20 @@ server (`tmux -L termden`, session `td-<harness id>`) and is rendered through
 reattaches. Workspaces, layouts and focus persist in
 `$XDG_STATE_HOME/termden/state.json`. The mock fleet lives behind `--demo`.
 
+## Workspace stats
+
+The **STATS** button in the sidebar footer opens a pane on the right. On top:
+your plan limits, Claude's 5-hour and weekly windows and opencode Go's 5-hour,
+weekly and monthly ones, with reset times. Below: the active workspace's total
+tokens (cached / in / out), each agent's tokens, context fill and uptime, and
+the MCP servers enabled for it. Shells use no tokens and are not listed.
+Everything is read from the agents themselves (Claude Code transcripts and
+status line, opencode's database and its usage endpoint) and from tmux;
+termden counts nothing and never touches your credentials. Claude tiles
+started before this feature show `restart the tile to track usage`.
+`termdenctl stats` prints the same data as JSON, and `termdenctl stats on|off`
+toggles the pane.
+
 ## Install
 
 ```sh
@@ -102,6 +116,7 @@ termdenctl send --enter <h> 'cargo test'       # type into it; key <h> ctrl-c
 termdenctl close|restart|focus <h> | rename <h> <name>
 termdenctl add-workspace <dir> | activate <ws> | rename-workspace <ws> <name>
 termdenctl log "note"                 # to the activity feed, as `self`
+termdenctl stats [on|off]             # JSON: tokens, MCPs, uptime per workspace
 termdenctl screenshot [out.png]       # headless mirror of the live app
 termdenctl screenshot --live          # grim grab of the real window
 termdenctl theme | reload | ping

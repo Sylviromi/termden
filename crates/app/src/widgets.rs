@@ -30,6 +30,7 @@ pub mod icons {
     pub const MINIMIZE: &str = "\u{e931}";
     pub const MAXIMIZE: &str = "\u{e3c1}";
     pub const RESTORE: &str = "\u{e3e0}";
+    pub const STATS: &str = "\u{e26b}";
 }
 
 pub fn hspacer() -> Div {

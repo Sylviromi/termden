@@ -30,6 +30,11 @@ Harnesses are named by id or name; `self` is the harness this runs in.
   mail read [h]               read and clear unread messages (default: self)
   mcp                         stdio MCP server with these tools (agents get it
                               pre-configured; you should not need to run it)
+  session-hook <file>         Claude SessionStart hook: records the session id
+                              (for the stats pane; pre-configured too)
+  statusline <file>           Claude status line: saves its input (plan limits,
+                              context) for the stats pane, then runs the user's
+                              own statusLine command if any (pre-configured)
   log <text>                  post to the activity feed (as `self` if set)
   settings [close] | theme | reload
   screenshot [out.png] [--live]
@@ -64,6 +69,8 @@ fn main() -> ExitCode {
         }
         Some("send") => send(&args[1..]),
         Some("mcp") => mcp::serve(),
+        Some("session-hook") => session_hook(args.get(1)),
+        Some("statusline") => statusline(args.get(1)),
         Some("mail") => mail(&args[1..], me.as_deref()),
         Some(_) => request(&args.join(" ")).map(|reply| println!("{reply}")),
     };
@@ -74,6 +81,78 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Claude Code passes `{"session_id": ...}` on stdin; each new id is added as
+/// a line. Print nothing: a SessionStart hook's stdout lands in the agent's
+/// context.
+fn session_hook(file: Option<&String>) -> Result<(), String> {
+    let file = file.ok_or("usage: session-hook <file>")?;
+    let mut input = String::new();
+    std::io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|e| e.to_string())?;
+    let value: serde_json::Value = serde_json::from_str(&input).map_err(|e| e.to_string())?;
+    let id = value["session_id"].as_str().ok_or("no session_id")?;
+    let known = std::fs::read_to_string(file).unwrap_or_default();
+    if known.lines().any(|line| line.trim() == id) {
+        return Ok(());
+    }
+    let mut out = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(file)
+        .map_err(|e| e.to_string())?;
+    // Older files hold a bare id without a newline.
+    let sep = if known.is_empty() || known.ends_with('\n') {
+        ""
+    } else {
+        "\n"
+    };
+    writeln!(out, "{sep}{id}").map_err(|e| e.to_string())
+}
+
+/// Claude Code feeds the status line JSON with plan limits and context fill.
+/// termden's `--settings` takes the status line slot, so the user's own
+/// command (project, then user settings) still runs and draws the line.
+fn statusline(file: Option<&String>) -> Result<(), String> {
+    let file = file.ok_or("usage: statusline <file>")?;
+    let mut input = String::new();
+    std::io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|e| e.to_string())?;
+    // Write then rename, so the stats reader never sees half a file.
+    let tmp = format!("{file}.tmp");
+    std::fs::write(&tmp, &input)
+        .and_then(|()| std::fs::rename(&tmp, file))
+        .map_err(|e| e.to_string())?;
+    let value: serde_json::Value = serde_json::from_str(&input).unwrap_or_default();
+    let cwd = PathBuf::from(value["workspace"]["current_dir"].as_str().unwrap_or("."));
+    let home = std::env::var("HOME").map(PathBuf::from).unwrap_or_default();
+    let config = std::env::var("CLAUDE_CONFIG_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| home.join(".claude"));
+    let command = [
+        cwd.join(".claude/settings.local.json"),
+        cwd.join(".claude/settings.json"),
+        config.join("settings.json"),
+    ]
+    .iter()
+    .filter_map(|path| std::fs::read_to_string(path).ok())
+    .filter_map(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+    .find_map(|settings| settings["statusLine"]["command"].as_str().map(String::from));
+    let Some(command) = command else {
+        return Ok(());
+    };
+    let mut child = Command::new("sh")
+        .args(["-c", &command])
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(input.as_bytes());
+    }
+    child.wait().map(drop).map_err(|e| e.to_string())
 }
 
 fn send(args: &[String]) -> Result<(), String> {

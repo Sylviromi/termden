@@ -90,6 +90,8 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   ping                       liveness check
   whoami <h>                 kind, name and tag of a harness (used by the git hook)
   state                      JSON: workspaces, harnesses, layouts, window size
+  stats [on|off]             JSON: per-workspace tokens, MCP servers and uptime;
+                             `on`/`off` shows or hides the stats pane
   screen [h]                 visible text of a terminal (default: focused)
   history <h> [lines]        scrollback + screen, last N lines (default 200)
   send <h> <text>            type text into a harness (no Enter)
@@ -160,6 +162,17 @@ impl TermdenApp {
         match verb {
             "ping" => "pong".into(),
             "state" => self.state_json().to_string(),
+            "stats" => match arg {
+                Some("on") => {
+                    self.set_stats_open(true, cx);
+                    "ok".into()
+                }
+                Some("off") => {
+                    self.set_stats_open(false, cx);
+                    "ok".into()
+                }
+                _ => self.stats_json().to_string(),
+            },
             // `shell|agent <tab> name <tab> tag`, for the git commit hook.
             "whoami" => match self.find_harness(arg).and_then(|id| self.harness(id)) {
                 Some((_, h)) => format!(
@@ -447,6 +460,69 @@ impl TermdenApp {
             }
             _ => HELP.into(),
         }
+    }
+
+    /// Per-workspace usage as JSON: what the stats pane draws, for scripts.
+    fn stats_json(&self) -> serde_json::Value {
+        let workspaces: Vec<_> = self
+            .workspaces
+            .iter()
+            .map(|workspace| {
+                let stats = self.stats.workspaces.get(&workspace.id);
+                let agents: Vec<_> = workspace
+                    .harnesses
+                    .iter()
+                    .filter(|harness| harness.kind != HarnessKind::Shell)
+                    .map(|harness| {
+                        let agent = stats.and_then(|stats| stats.agent(harness.id));
+                        json!({
+                            "id": harness.id,
+                            "name": harness.name,
+                            "kind": harness.kind,
+                            "started": agent.and_then(|agent| agent.started),
+                            "age_s": agent.and_then(|agent| agent.age()),
+                            "tracked": agent.is_some_and(|agent| agent.tracked),
+                            "context_percent": agent.and_then(|agent| agent.context_percent),
+                            "mcp": agent.map(|agent| agent.mcp.clone()).unwrap_or_default(),
+                            "tokens": agent.and_then(|agent| agent.usage).map(|usage| json!({
+                                "input": usage.input,
+                                "output": usage.output,
+                                "cache_read": usage.cache_read,
+                                "cache_write": usage.cache_write,
+                            })),
+                        })
+                    })
+                    .collect();
+                json!({
+                    "id": workspace.id,
+                    "name": workspace.name,
+                    "age_s": stats.and_then(|stats| stats.age()),
+                    "mcp": stats.map(|stats| stats.mcp.clone()).unwrap_or_default(),
+                    "tokens": stats.filter(|stats| stats.known()).map(|stats| stats.usage()).map(|usage| json!({
+                        "input": usage.input,
+                        "output": usage.output,
+                        "cache_read": usage.cache_read,
+                        "cache_write": usage.cache_write,
+                    })),
+                    "agents": agents,
+                })
+            })
+            .collect();
+        json!({
+            "mode": format!("{:?}", self.mode).to_lowercase(),
+            "open": self.stats_open,
+            "active": self.active,
+            "sampled_s": self.stats.at.map(|at| at.elapsed().as_secs()),
+            "plans": self.stats.plans.iter().map(|plan| json!({
+                "name": plan.name,
+                "limits": plan.limits.iter().map(|limit| json!({
+                    "label": limit.label,
+                    "used_percent": limit.used_percent,
+                    "resets_at": limit.resets_at,
+                })).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
+            "workspaces": workspaces,
+        })
     }
 
     fn state_json(&self) -> serde_json::Value {

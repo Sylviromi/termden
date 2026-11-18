@@ -135,6 +135,12 @@ pub struct TermdenApp {
     /// Newer release tag offered in the footer (`update.rs`).
     pub update: Option<crate::update::Update>,
     pub update_open: bool,
+    /// Per-workspace token/MCP/uptime numbers (`stats.rs`), refreshed on the
+    /// background executor.
+    pub stats: crate::stats::StatsCache,
+    /// Whether the stats pane is showing (persisted in the config).
+    pub stats_open: bool,
+    pub stats_scroll: ScrollHandle,
     scroll_lines: f32,
     /// Our own binary and its mtime at startup, for reload-on-rebuild.
     pub(crate) exe: Option<(PathBuf, SystemTime)>,
@@ -171,6 +177,7 @@ impl TermdenApp {
             crate::choices::listen(cx);
             Self::watch_updates(cx);
         }
+        crate::stats::watch(cx);
         // Warm the interactive-shell PATH probe before the first agent spawns.
         std::thread::spawn(|| pty::user_path());
 
@@ -184,6 +191,7 @@ impl TermdenApp {
 
         let mut workspaces = state.workspaces;
         termden_core::assign_agent_colors(&mut workspaces, color_seed());
+        let stats_open = config.stats_open || mode == Mode::Demo;
         let mut app = Self {
             mode,
             config,
@@ -230,6 +238,9 @@ impl TermdenApp {
             hover_url: None,
             update: None,
             update_open: false,
+            stats: Default::default(),
+            stats_open,
+            stats_scroll: ScrollHandle::new(),
             scroll_lines: 0.0,
             exe,
             started: Instant::now(),
@@ -266,9 +277,20 @@ impl TermdenApp {
         gpui::size(px(self.viewport.0), px(self.viewport.1))
     }
 
+    /// Where the tiling canvas sits in this window, excluding the panel and the
+    /// stats pane when it is open.
+    pub fn canvas_rect(&self) -> TRect {
+        let inset = if self.stats_open {
+            self.config.gap + crate::stats::width(self.viewport.0)
+        } else {
+            0.0
+        };
+        canvas::canvas_rect(&self.config, self.viewport_size(), inset)
+    }
+
     /// Every tile of a workspace laid out on the canvas, ignoring zoom.
     pub fn layout_tiles(&self, ws: WorkspaceId) -> Vec<(HarnessId, TRect)> {
-        let rect = canvas::canvas_rect(&self.config, self.viewport_size());
+        let rect = self.canvas_rect();
         self.layouts
             .get(&ws)
             .map(|layout| canvas::layout_rects(layout, rect, self.config.gap))
@@ -282,7 +304,7 @@ impl TermdenApp {
             ws == self.active && self.layouts.get(&ws).is_some_and(|l| l.contains(*id))
         });
         match zoomed {
-            Some(id) => vec![(id, canvas::canvas_rect(&self.config, self.viewport_size()))],
+            Some(id) => vec![(id, self.canvas_rect())],
             None => self.layout_tiles(ws),
         }
     }
@@ -798,6 +820,24 @@ impl TermdenApp {
             .find_map(|workspace| workspace.harness(id).map(|harness| (workspace, harness)))
     }
 
+    /// Show or hide the workspace stats pane; the choice is saved so it comes
+    /// back after a restart.
+    pub fn set_stats_open(&mut self, open: bool, cx: &mut Context<Self>) {
+        if self.stats_open == open {
+            return;
+        }
+        self.stats_open = open;
+        self.config.stats_open = open;
+        // Demo and mirror instances borrow the real config; only the real app
+        // owns it.
+        if self.mode == Mode::Live
+            && let Err(error) = self.config.save()
+        {
+            eprintln!("termden: could not save config: {error}");
+        }
+        cx.notify();
+    }
+
     pub fn activate_workspace(&mut self, id: WorkspaceId) {
         self.active = id;
         if let Some(workspace) = self.workspace_mut(id) {
@@ -1287,7 +1327,8 @@ impl TermdenApp {
                     .flex_row()
                     .gap(px(gap))
                     .child(panel)
-                    .child(canvas),
+                    .child(canvas)
+                    .children(self.stats_open.then(|| crate::stats::render(self, cx))),
             )
             .child(
                 div()

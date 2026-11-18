@@ -89,6 +89,9 @@ case "$MODE" in
     fresh)
         export TERMDEN_STATE_FILE="$TMP/state.json"
         export TERMDEN_CONTROL_SOCKET="$TMP/app.sock"
+        # Throwaway config too: a test must not rewrite the user's settings
+        # (toggling the stats pane, for one, saves the config).
+        export XDG_CONFIG_HOME="$TMP/config"
         ;;
     mirror)
         export TERMDEN_MIRROR=1

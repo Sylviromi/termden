@@ -29,11 +29,12 @@ impl TRect {
     }
 }
 
-/// Where the tiling canvas sits inside the window.
-pub fn canvas_rect(config: &Config, viewport: Size<Pixels>) -> TRect {
+/// Where the tiling canvas sits inside the window. `inset` is room reserved on
+/// the right, e.g. the stats pane plus its gap.
+pub fn canvas_rect(config: &Config, viewport: Size<Pixels>, inset: f32) -> TRect {
     let gap = config.gap;
     let x = gap + config.panel_width + gap;
-    let width = f32::from(viewport.width) - x - gap;
+    let width = f32::from(viewport.width) - x - gap - inset;
     let height = f32::from(viewport.height) - gap * 2.0;
 
     TRect {
@@ -152,9 +153,13 @@ fn walk(
     }
 }
 
-pub fn render(app: &TermdenApp, window: &gpui::Window, cx: &mut Context<TermdenApp>) -> AnyElement {
+pub fn render(
+    app: &TermdenApp,
+    _window: &gpui::Window,
+    cx: &mut Context<TermdenApp>,
+) -> AnyElement {
     let theme = &app.theme;
-    let rect = canvas_rect(&app.config, window.viewport_size());
+    let rect = app.canvas_rect();
     let tiles = app.visible_tiles(app.active);
     let empty = tiles.is_empty();
 

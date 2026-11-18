@@ -72,9 +72,18 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind) -> Option<String> 
             fs::write(&mcp, config.to_string()).ok()?;
             // The commit hook adds the sign-off; Claude must not add its own.
             let settings = dir.join("settings.json");
-            let attribution =
-                json!({ "attribution": { "commit": "", "pr": "", "sessionUrl": false }});
-            fs::write(&settings, attribution.to_string()).ok()?;
+            // Claude reports its session id on start, `/clear` and `--resume`;
+            // the stats pane finds the transcript through it.
+            let hook = format!("{} session-hook {}", q(&ctl), q(&dir.join("session.id")));
+            // The status line input carries plan limits and context fill;
+            // `termdenctl statusline` keeps a copy and runs the user's own line.
+            let status = format!("{} statusline {}", q(&ctl), q(&dir.join("status.json")));
+            let body = json!({
+                "attribution": { "commit": "", "pr": "", "sessionUrl": false },
+                "hooks": { "SessionStart": [{ "hooks": [{ "type": "command", "command": hook }] }] },
+                "statusLine": { "type": "command", "command": status },
+            });
+            fs::write(&settings, body.to_string()).ok()?;
             Some(format!(
                 "claude --settings {} --mcp-config {} --append-system-prompt '{}'",
                 q(&settings),

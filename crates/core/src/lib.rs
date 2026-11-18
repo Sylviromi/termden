@@ -7,6 +7,7 @@ pub mod config;
 pub mod layout;
 pub mod model;
 pub mod state;
+pub mod stats;
 
 pub use config::{Config, ThemeId, TitleBar};
 pub use layout::{Axis, DropZone, LayoutNode};

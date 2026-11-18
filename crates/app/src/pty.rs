@@ -163,6 +163,43 @@ pub fn tmux_socket() -> String {
     std::env::var("TERMDEN_TMUX_SOCKET").unwrap_or_else(|_| "termden".into())
 }
 
+/// Creation time of every harness tmux session, keyed by harness id. One call,
+/// so a stats refresh never spawns a tmux process per agent.
+pub fn session_starts() -> std::collections::HashMap<u32, u64> {
+    let out = std::process::Command::new("tmux")
+        .args([
+            "-L",
+            &tmux_socket(),
+            "list-sessions",
+            "-F",
+            "#{session_name} #{session_created}",
+        ])
+        .output();
+    let mut starts = std::collections::HashMap::new();
+    let Ok(out) = out else {
+        return starts;
+    };
+    if !out.status.success() {
+        return starts;
+    }
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let mut parts = line.trim().split(' ');
+        let (Some(name), Some(created)) = (parts.next(), parts.next()) else {
+            continue;
+        };
+        let Some(id) = name
+            .strip_prefix("td-")
+            .and_then(|id| id.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        if let Ok(created) = created.parse::<u64>() {
+            starts.insert(id, created);
+        }
+    }
+    starts
+}
+
 impl Session {
     /// The prompt line under the cursor is a `/clear` (or opencode's `/new`).
     pub fn cursor_line_is_clear(&self) -> bool {

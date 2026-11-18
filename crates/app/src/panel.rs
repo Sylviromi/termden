@@ -31,7 +31,7 @@ pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp
         .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
         .child(activity(app, window))
-        .child(footer(app))
+        .child(footer(app, cx))
         .into_any_element()
 }
 
@@ -922,10 +922,13 @@ fn subagent_rows(harness: &Harness, theme: &Theme, tick: u64) -> Option<Div> {
     )
 }
 
-fn footer(app: &TermdenApp) -> AnyElement {
+fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
     let working = app.working_count();
     let total = app.harness_count();
+    let open = app.stats_open;
+    let accent = theme.accent(0);
+    let hover_bg = theme.surface0;
 
     div()
         .flex()
@@ -946,12 +949,45 @@ fn footer(app: &TermdenApp) -> AnyElement {
         ))
         .child(
             div()
+                .flex_1()
                 .text_size(theme.ui(9.5))
                 .text_color(theme.overlay)
                 .child(format!(
                     "{working} working · {total} harness{}",
                     if total == 1 { "" } else { "es" }
                 )),
+        )
+        .child(
+            div()
+                .id("stats-toggle")
+                .flex_shrink_0()
+                .h(px(24.))
+                .px(px(6.))
+                .rounded(px(6.))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .gap(px(4.))
+                .bg(accent.opacity(if open { 0.12 } else { 0.0 }))
+                .hover(move |style| style.bg(hover_bg.opacity(0.5)))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    let open = !this.stats_open;
+                    this.set_stats_open(open, cx);
+                }))
+                .child(
+                    div()
+                        .font_family(ICON_FONT)
+                        .text_size(theme.ui(11.))
+                        .text_color(if open { accent } else { theme.overlay })
+                        .child(icons::STATS),
+                )
+                .child(
+                    div()
+                        .text_size(theme.ui(8.))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(if open { accent } else { theme.overlay })
+                        .child("STATS"),
+                ),
         )
         .into_any_element()
 }
