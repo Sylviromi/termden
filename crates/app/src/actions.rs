@@ -66,7 +66,7 @@ pub(crate) fn join_message(harness: &Harness) -> String {
 }
 
 /// True for the auto-generated names of agent harnesses ("opencode",
-/// "Claude 2", "pi 3"). Shells are not included: "Shell joined" is real.
+/// "Claude 2", "pi 3"). Shells are not included.
 fn is_placeholder_name(name: &str) -> bool {
     ["Claude", "opencode", "pi"].iter().any(|base| {
         name == *base
@@ -143,8 +143,12 @@ impl TermdenApp {
         });
     }
 
+    /// Activity for an agent. Shells are the user's own terminals, not
+    /// participants, so nothing about them is logged.
     pub fn log_harness(&mut self, id: HarnessId, message: String) {
-        if let Some((workspace, harness)) = self.harness(id) {
+        if let Some((workspace, harness)) = self.harness(id)
+            && harness.kind != HarnessKind::Shell
+        {
             let (name, accent) = (
                 harness.name.clone(),
                 harness.color.unwrap_or(workspace.accent),
@@ -340,10 +344,6 @@ impl TermdenApp {
         }
 
         self.adding = None;
-        // Agents wait until they name themselves; shells are announced now.
-        if kind == HarnessKind::Shell {
-            self.log_harness(id, "joined".into());
-        }
         self.focus_harness(id);
         Some(id)
     }

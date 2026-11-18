@@ -347,7 +347,11 @@ impl TermdenApp {
             },
             "log" => {
                 let text = rest();
-                match self.find_harness(arg) {
+                let agent = self.find_harness(arg).filter(|&id| {
+                    self.harness(id)
+                        .is_some_and(|(_, h)| h.kind != HarnessKind::Shell)
+                });
+                match agent {
                     Some(id) => self.log_harness(id, text),
                     None => self.log("Termden", text, 0),
                 }
