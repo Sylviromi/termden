@@ -804,6 +804,12 @@ impl TermdenApp {
         if first_work {
             self.log_harness(id, "started working".into());
         }
+        if status == HarnessStatus::NeedsInput
+            && let Some((_, harness)) = self.harness(id)
+            && harness.kind != HarnessKind::Shell
+        {
+            notify(&harness.name, "needs your input");
+        }
     }
 
     pub fn workspace(&self, id: WorkspaceId) -> Option<&Workspace> {
@@ -1386,4 +1392,15 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
     };
     let path = root.join(cwd);
     if path.is_dir() { path } else { home }
+}
+
+/// Desktop notification for things that happen while the window is not in
+/// front; silently nothing where `notify-send` is missing.
+pub fn notify(who: &str, what: &str) {
+    let _ = std::process::Command::new("notify-send")
+        .args(["-a", "termden", "--", who, what])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
 }
