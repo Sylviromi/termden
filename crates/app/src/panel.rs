@@ -990,6 +990,7 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
             pill("activity-toggle", "ACTIVITY", icons::HISTORY, activity_open)
                 .on_click(cx.listener(|this, _, _, cx| this.toggle_activity(cx))),
         )
+        .child(div().w(px(1.)).h(px(14.)).bg(theme.text.opacity(0.12)))
         .child(
             pill("stats-toggle", "STATS", icons::STATS, app.stats_open).on_click(cx.listener(
                 |this, _, _, cx| {
