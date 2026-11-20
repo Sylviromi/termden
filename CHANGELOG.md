@@ -5,6 +5,15 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.2.0
+
+- The activity feed collapses: ACTIVITY and STATS toggles now sit in the sidebar footer (the "working / harnesses" tally is gone), and the choice is remembered
+- Rounded outer window corners under GNOME (square when maximized, snapped or fullscreen)
+- Removing a workspace takes a second click within 3 seconds instead of an inline confirm row
+- New workspaces start empty instead of with a shell tile
+- Agents no longer get `termden_ask_user_choice`: they use their own question tool, and `termden_show_results` still shows images and files in your browser
+- The activity feed says "shared N results" without listing the titles
+
 ## v0.1.7
 
 - 51 colour themes, dark and light: click the theme in Settings to open a searchable panel of all of them
