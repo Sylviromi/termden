@@ -103,8 +103,6 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   close <h> | restart <h>    kill a harness | re-attach an exited one
   show <json>                show the user results (images, video, files) in the browser;
                              prints the page URL. {from,title,description,items:[{path,caption,description}]}
-  choice <json>              ask the user to pick in the browser; prints the page URL
-                             {from,title,question,options:[{label,description,image}]}
   rename <h> <name>          rename a harness
   version                    running version, and a newer release if one is out
   update [show]              install the newer release (or just show its popup); the
@@ -369,26 +367,6 @@ impl TermdenApp {
                     None => self.log("Termden", text, 0),
                 }
                 "ok".into()
-            }
-            "choice" => {
-                let body: serde_json::Value =
-                    match serde_json::from_str(line.trim_start()["choice".len()..].trim()) {
-                        Ok(body) => body,
-                        Err(error) => return format!("error: bad json: {error}"),
-                    };
-                let Some(from) = self.find_harness(body["from"].as_str()) else {
-                    return NO_HARNESS.into();
-                };
-                let Some(url) = crate::choices::url() else {
-                    return "error: choice server is not running".into();
-                };
-                match crate::choices::parse(from, &body) {
-                    Ok(choice) => {
-                        self.add_choice(choice);
-                        url
-                    }
-                    Err(error) => format!("error: {error}"),
-                }
             }
             "show" => {
                 let body: serde_json::Value =

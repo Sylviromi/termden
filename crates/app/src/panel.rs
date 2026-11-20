@@ -28,7 +28,6 @@ pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp
         .overflow_hidden()
         .child(header(app, cx))
         .children(restart_banner(app, cx))
-        .children(crate::choices::banner(app, cx))
         .child(list(app, cx))
         .child(activity(app, window))
         .child(footer(app, cx))

@@ -1,5 +1,5 @@
 //! Results agents show the user (images, videos, audio, files): a gallery
-//! page on the picker's local server (`choices.rs`), view only. The agent gets
+//! page on the local results server (`choices.rs`), view only. The agent gets
 //! the page URL back and posts it; nothing is mailed back.
 //!
 //! Only files an agent listed are served, behind the server's token, and with

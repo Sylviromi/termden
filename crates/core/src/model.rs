@@ -223,22 +223,6 @@ pub struct Activity {
     pub harness: Option<HarnessId>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChoiceOption {
-    pub label: String,
-    pub description: String,
-    pub image: Option<std::path::PathBuf>,
-}
-
-/// A question an agent asked the user; stays pending until answered.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Choice {
-    pub from: HarnessId,
-    pub title: String,
-    pub question: String,
-    pub options: Vec<ChoiceOption>,
-}
-
 /// Work an agent shows the user (images, videos, files): view only, nothing
 /// is sent back. Served by the app's local results page.
 #[derive(Debug, Clone, Serialize, Deserialize)]

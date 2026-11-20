@@ -12,7 +12,7 @@ pub mod stats;
 pub use config::{Config, ThemeId, TitleBar};
 pub use layout::{Axis, DropZone, LayoutNode};
 pub use model::{
-    AGENT_COLORS, Activity, Choice, ChoiceOption, Harness, HarnessId, HarnessKind, HarnessStatus,
-    Mail, ShowItem, Showcase, Subagent, SubagentId, Workspace, WorkspaceId, assign_agent_colors,
+    AGENT_COLORS, Activity, Harness, HarnessId, HarnessKind, HarnessStatus, Mail, ShowItem,
+    Showcase, Subagent, SubagentId, Workspace, WorkspaceId, assign_agent_colors,
 };
 pub use state::AppState;

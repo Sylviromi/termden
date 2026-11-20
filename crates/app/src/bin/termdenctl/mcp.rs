@@ -33,20 +33,6 @@ fn tools() -> Value {
             }},
         },
         {
-            "name": "termden_ask_user_choice",
-            "description": "Show the user 2-8 options (e.g. logo or UI design variants) on a local web page and let them pick. Returns the page URL immediately; post it to the user in your reply. The choice arrives later as mail from `user` (call termden_read_mail when told). The user may answer later or skip. Do not wait for it: continue other work or end your turn. Give images as ABSOLUTE paths to png/jpg/svg files.",
-            "inputSchema": { "type": "object", "required": ["title", "options"], "properties": {
-                "title": text("what is being chosen, e.g. Pick a logo"),
-                "question": text("optional extra context"),
-                "options": { "type": "array", "minItems": 2, "maxItems": 8, "items": {
-                    "type": "object", "required": ["label"], "properties": {
-                        "label": text("short name"),
-                        "description": text("one line on what makes it different"),
-                        "image": text("absolute path to a preview image"),
-                    }}},
-            }},
-        },
-        {
             "name": "termden_show_results",
             "description": "Show the user what you made or captured (images, screenshots, renders, videos, audio, PDFs, other files) as a gallery on a local web page. View only: nothing comes back. Returns the page URL immediately; post it in your reply with that exact link on its own line (the user Ctrl+clicks it). Use it whenever you produce several visual results or any file the user should look at. Give ABSOLUTE paths to existing files; 1-50 items.",
             "inputSchema": { "type": "object", "required": ["title", "items"], "properties": {
@@ -128,16 +114,6 @@ fn call(name: &str, args: &Value) -> Result<String, String> {
         "termden_set_name" => {
             request(&format!("rename {me} {}", arg("name")?.replace('\n', " ")))?;
             Ok("name set".into())
-        }
-        "termden_ask_user_choice" => {
-            let body = json!({
-                "from": me, "title": args["title"], "question": args["question"],
-                "options": args["options"],
-            });
-            let url = request(&format!("choice {body}"))?;
-            Ok(format!(
-                "Preview started at {url}\nTell the user in your reply, with that exact link on its own line, that the options are ready to pick there (they Ctrl+click it). Their pick will arrive as mail from `user`; do not wait for it."
-            ))
         }
         "termden_show_results" => {
             let body = json!({

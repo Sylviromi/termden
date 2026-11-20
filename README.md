@@ -207,12 +207,8 @@ Claude Code and opencode tiles started by termden get a `termden` MCP server
 - `termden_send_mail`, `termden_read_mail`: mailboxes. An idle agent gets a
   one-line `📬 sender: preview…` typed into its prompt, never over your draft.
 - `termden_set_name|tag|pronouns|title`: identity shown in the sidebar.
-- `termden_ask_user_choice`: shows you 2-8 options (with images) on a local
-  web page in termden's colours. The agent posts the link; Ctrl+click it,
-  pick, and the answer is mailed back. The page lives on `127.0.0.1` behind a
-  random token kept beside the control socket.
 - `termden_show_results`: shows you what an agent made or captured (images,
-  screenshots, videos, audio, PDFs, files) as a gallery on the same local
+  screenshots, videos, audio, PDFs, files) as a gallery on a local
   server, view only. The agent posts the link; `…/r/` lists the last 20 sets.
 
 ## Configuration

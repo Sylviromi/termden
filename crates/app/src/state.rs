@@ -119,8 +119,6 @@ pub struct TermdenApp {
     /// it and the user confirms (`request_restart`).
     pub restart_pending: Option<String>,
     pub popups: [crate::popup::PopupPos; 2],
-    /// Questions agents asked the user, answered in the browser (`choices.rs`).
-    pub choices: Vec<termden_core::Choice>,
     /// Results agents shared with the user, newest last (`showcase.rs`).
     pub showcases: Vec<termden_core::Showcase>,
     /// Absolute tile rects of the active workspace, from the last frame.
@@ -229,7 +227,6 @@ impl TermdenApp {
             theme_scroll_to: Default::default(),
             restart_pending: None,
             popups: Default::default(),
-            choices: state.choices,
             showcases: state.showcases,
             tile_rects: Vec::new(),
             viewport: (0.0, 0.0),
