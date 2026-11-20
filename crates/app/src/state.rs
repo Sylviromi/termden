@@ -107,6 +107,11 @@ pub struct TermdenApp {
     pub resizing_extra: Vec<canvas::Divider>,
     /// Dragging the edge of the left panel.
     pub panel_resizing: bool,
+    /// Auto-hide sidebar currently slid out because the pointer is on it.
+    pub sidebar_peek: bool,
+    /// 0 = hidden, 1 = fully slid out; eased toward `sidebar_peek` each frame.
+    pub sidebar_anim: f32,
+    pub sidebar_anim_at: Instant,
     pub settings_open: bool,
     /// Theme chooser in settings (`None` = collapsed to one row).
     pub theme_browser: Option<crate::settings::ThemeBrowser>,
@@ -220,6 +225,9 @@ impl TermdenApp {
             resizing: None,
             resizing_extra: Vec::new(),
             panel_resizing: false,
+            sidebar_peek: false,
+            sidebar_anim: 0.0,
+            sidebar_anim_at: Instant::now(),
             settings_open: false,
             theme_browser: None,
             theme_scroll: ScrollHandle::new(),
@@ -912,6 +920,14 @@ impl TermdenApp {
     }
 
     /// Switch the title bar setting and apply it to the open window.
+    pub fn set_sidebar(&mut self, sidebar: termden_core::Sidebar) {
+        self.config.sidebar = sidebar;
+        self.sidebar_peek = false;
+        if let Err(error) = self.config.save() {
+            eprintln!("termden: could not save config: {error}");
+        }
+    }
+
     pub fn set_title_bar(&mut self, title_bar: termden_core::TitleBar, window: &Window) {
         self.config.title_bar = title_bar;
         window.request_decorations(if title_bar.wanted() && self.server_decorations {
@@ -1039,6 +1055,15 @@ impl TermdenApp {
         if let Some(p) = self.popups.iter_mut().find(|p| p.dragging()) {
             p.drag_to(mouse, self.viewport);
             return;
+        }
+        if self.config.sidebar == termden_core::Sidebar::AutoHide && !self.panel_resizing {
+            let x = f32::from(position.x);
+            let gap = self.config.gap;
+            self.sidebar_peek = if self.sidebar_peek {
+                x < gap * 2.0 + self.config.panel_width
+            } else {
+                x < 16.0 && self.drag.is_none() && self.resizing.is_none()
+            };
         }
         if self.panel_resizing {
             let gap = self.config.gap;
@@ -1273,7 +1298,27 @@ impl TermdenApp {
         let gap = self.config.gap;
         self.popups[crate::popup::SETTINGS].update(self.settings_open);
         self.popups[crate::popup::UPDATE].update(self.update_open);
-        let panel = panel::render(self, window, cx);
+        let pinned = self.config.sidebar == termden_core::Sidebar::Pinned;
+        let now = Instant::now();
+        let dt = now
+            .duration_since(self.sidebar_anim_at)
+            .as_secs_f32()
+            .min(0.05);
+        self.sidebar_anim_at = now;
+        let target = if self.sidebar_peek { 1.0 } else { 0.0 };
+        if self.sidebar_anim != target {
+            let step = dt / 0.16;
+            self.sidebar_anim = if target > self.sidebar_anim {
+                (self.sidebar_anim + step).min(1.0)
+            } else {
+                (self.sidebar_anim - step).max(0.0)
+            };
+            window.request_animation_frame();
+        }
+        let eased = 1.0 - (1.0 - self.sidebar_anim).powi(2);
+        let shown = pinned || self.sidebar_anim > 0.0;
+        let mut panel = shown.then(|| panel::render(self, window, cx));
+        let floating = if pinned { None } else { panel.take() };
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
 
@@ -1352,11 +1397,21 @@ impl TermdenApp {
                     .flex()
                     .flex_row()
                     .gap(px(gap))
-                    .child(panel)
+                    .children(panel)
                     .child(canvas)
                     .children(self.stats_open.then(|| crate::stats::render(self, cx))),
             )
-            .child(
+            .children(floating.map(|panel| {
+                div()
+                    .absolute()
+                    .left(px(
+                        gap - (1.0 - eased) * (self.config.panel_width + gap * 2.0)
+                    ))
+                    .top(px(gap))
+                    .bottom(px(gap))
+                    .child(panel)
+            }))
+            .children((pinned || self.sidebar_peek).then(|| {
                 div()
                     .id("panel-resize")
                     .absolute()
@@ -1371,8 +1426,8 @@ impl TermdenApp {
                             this.panel_resizing = true;
                             cx.stop_propagation();
                         }),
-                    ),
-            )
+                    )
+            }))
             .children(self.resize_edges(cx))
             .children(self.hover_url_element())
             .children(crate::settings::render(self, window, cx))

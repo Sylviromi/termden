@@ -13,7 +13,11 @@ use crate::widgets::{
 
 pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
-    let radius = app.config.corner_radius;
+    let radius = if app.config.sidebar == termden_core::Sidebar::Pinned {
+        app.config.corner_radius
+    } else {
+        8.0
+    };
 
     div()
         .id("panel")

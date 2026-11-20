@@ -15,6 +15,27 @@ impl Default for ThemeId {
     }
 }
 
+/// `Pinned` keeps the sidebar next to the tiles; `AutoHide` hides it until the
+/// pointer touches the left screen edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Sidebar {
+    #[default]
+    Pinned,
+    AutoHide,
+}
+
+impl Sidebar {
+    pub const ALL: [Sidebar; 2] = [Sidebar::Pinned, Sidebar::AutoHide];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Sidebar::Pinned => "Pinned",
+            Sidebar::AutoHide => "Auto-hide",
+        }
+    }
+}
+
 /// Window title bar. `Auto` hides it under tiling window managers and asks
 /// the desktop for its own everywhere else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -79,6 +100,7 @@ pub struct Config {
     pub stats_open: bool,
     /// The sidebar activity feed; remembered between runs.
     pub activity_open: bool,
+    pub sidebar: Sidebar,
 }
 
 impl Default for Config {
@@ -94,6 +116,7 @@ impl Default for Config {
             title_bar: TitleBar::Auto,
             stats_open: false,
             activity_open: true,
+            sidebar: Sidebar::Pinned,
         }
     }
 }
