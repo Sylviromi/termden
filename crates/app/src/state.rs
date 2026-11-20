@@ -824,6 +824,17 @@ impl TermdenApp {
 
     /// Show or hide the workspace stats pane; the choice is saved so it comes
     /// back after a restart.
+    pub fn toggle_activity(&mut self, cx: &mut Context<Self>) {
+        self.config.activity_open = !self.config.activity_open;
+        self.activity_stick.set(true);
+        if self.mode == Mode::Live
+            && let Err(error) = self.config.save()
+        {
+            eprintln!("termden: could not save config: {error}");
+        }
+        cx.notify();
+    }
+
     pub fn set_stats_open(&mut self, open: bool, cx: &mut Context<Self>) {
         if self.stats_open == open {
             return;
@@ -1260,6 +1271,10 @@ impl TermdenApp {
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();
 
+        // Client-drawn windows (GNOME) get no rounded corners from the
+        // desktop; draw them unless maximized or snapped.
+        let round_corners =
+            self.own_chrome == Some(false) && !self.tiled && !window.is_fullscreen();
         div()
             .id("root")
             .relative()

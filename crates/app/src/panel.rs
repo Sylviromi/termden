@@ -269,11 +269,15 @@ fn section_header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement 
 
 fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
     let theme = &app.theme;
+    let open = app.config.activity_open;
     if app.activity_stick.replace(false) {
         app.activity_scroll.scroll_to_bottom();
     }
     if app.activity_smooth.step(&app.activity_scroll) {
         window.request_animation_frame();
+    }
+    if !open {
+        return div().into_any_element();
     }
 
     div()
@@ -283,15 +287,21 @@ fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
         .px(px(9.))
         .pb(px(8.))
         .child(
-            div().flex().items_center().h(px(24.)).px(px(6.)).child(
-                div()
-                    .text_size(theme.ui(9.5))
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(theme.overlay)
-                    .child("ACTIVITY"),
-            ),
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .h(px(24.))
+                .px(px(6.))
+                .child(
+                    div()
+                        .text_size(theme.ui(9.5))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(theme.overlay)
+                        .child("ACTIVITY"),
+                ),
         )
-        .child(
+        .children(open.then(|| {
             div()
                 .id("activity-feed")
                 .track_scroll(&app.activity_scroll)
@@ -425,8 +435,8 @@ fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
                                 .text_color(theme.overlay.opacity(0.8))
                                 .child(entry.time.clone()),
                         )
-                })),
-        )
+                }))
+        }))
         .into_any_element()
 }
 
@@ -930,70 +940,59 @@ fn subagent_rows(harness: &Harness, theme: &Theme, tick: u64) -> Option<Div> {
 
 fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
-    let working = app.working_count();
-    let total = app.harness_count();
-    let open = app.stats_open;
     let accent = theme.accent(0);
     let hover_bg = theme.surface0;
+    let pill = |id: &'static str, label: &'static str, glyph: &'static str, open: bool| {
+        let color = if open { accent } else { theme.overlay };
+        div()
+            .id(id)
+            .flex_1()
+            .h(px(26.))
+            .rounded(px(6.))
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .gap(px(4.))
+            .bg(accent.opacity(if open { 0.12 } else { 0.0 }))
+            .hover(move |style| style.bg(hover_bg.opacity(0.5)))
+            .child(
+                div()
+                    .font_family(ICON_FONT)
+                    .text_size(theme.ui(11.))
+                    .text_color(color)
+                    .child(glyph),
+            )
+            .child(
+                div()
+                    .text_size(theme.ui(8.))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(color)
+                    .child(label),
+            )
+    };
+    let activity_open = app.config.activity_open;
 
     div()
         .flex()
         .items_center()
         .gap(px(6.))
         .h(px(44.))
-        .px(px(13.))
+        .px(px(9.))
         .flex_shrink_0()
         .border_t_1()
         .border_color(theme.text.opacity(0.05))
-        .child(dot(
-            if working > 0 {
-                theme.green
-            } else {
-                theme.overlay
-            },
-            5.,
-        ))
         .child(
-            div()
-                .flex_1()
-                .text_size(theme.ui(9.5))
-                .text_color(theme.overlay)
-                .child(format!(
-                    "{working} working · {total} harness{}",
-                    if total == 1 { "" } else { "es" }
-                )),
+            pill("activity-toggle", "ACTIVITY", icons::HISTORY, activity_open)
+                .on_click(cx.listener(|this, _, _, cx| this.toggle_activity(cx))),
         )
         .child(
-            div()
-                .id("stats-toggle")
-                .flex_shrink_0()
-                .h(px(24.))
-                .px(px(6.))
-                .rounded(px(6.))
-                .cursor_pointer()
-                .flex()
-                .items_center()
-                .gap(px(4.))
-                .bg(accent.opacity(if open { 0.12 } else { 0.0 }))
-                .hover(move |style| style.bg(hover_bg.opacity(0.5)))
-                .on_click(cx.listener(|this, _, _, cx| {
+            pill("stats-toggle", "STATS", icons::STATS, app.stats_open).on_click(cx.listener(
+                |this, _, _, cx| {
                     let open = !this.stats_open;
                     this.set_stats_open(open, cx);
-                }))
-                .child(
-                    div()
-                        .font_family(ICON_FONT)
-                        .text_size(theme.ui(11.))
-                        .text_color(if open { accent } else { theme.overlay })
-                        .child(icons::STATS),
-                )
-                .child(
-                    div()
-                        .text_size(theme.ui(8.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(if open { accent } else { theme.overlay })
-                        .child("STATS"),
-                ),
+                },
+            )),
         )
         .into_any_element()
 }

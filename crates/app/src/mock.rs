@@ -255,20 +255,3 @@ fn sub(id: u32, label: &str, detail: &str, elapsed: &str, working: bool) -> Suba
         working,
     }
 }
-
-impl TermdenApp {
-    /// Total harnesses across every workspace, for the footer tally.
-    pub fn harness_count(&self) -> usize {
-        self.workspaces
-            .iter()
-            .map(|workspace| workspace.harnesses.len())
-            .sum()
-    }
-
-    pub fn working_count(&self) -> usize {
-        self.workspaces
-            .iter()
-            .map(|workspace| workspace.working())
-            .sum()
-    }
-}
