@@ -74,10 +74,7 @@ impl TermdenApp {
         let n = items.len();
         self.log_harness(
             from,
-            format!(
-                "shared {n} result{}: {title}",
-                if n == 1 { "" } else { "s" }
-            ),
+            format!("shared {n} result{}", if n == 1 { "" } else { "s" }),
         );
         self.showcases.push(Showcase {
             id,
