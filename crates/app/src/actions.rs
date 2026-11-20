@@ -303,7 +303,6 @@ impl TermdenApp {
         );
         self.log("Workspace", format!("{folder} added"), 0);
         self.activate_workspace(id);
-        self.add_harness(id, HarnessKind::Shell);
         id
     }
 
