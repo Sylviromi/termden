@@ -250,31 +250,18 @@ pub struct ShowItem {
 /// status) and red (errors).
 pub const AGENT_COLORS: [usize; 6] = [0, 1, 3, 4, 5, 6];
 
-/// Give every harness without a color a random one, preferring colors nobody
-/// else wears.
-pub fn assign_agent_colors(workspaces: &mut [Workspace], mut seed: u64) {
-    let mut used: Vec<usize> = workspaces
-        .iter()
-        .flat_map(|w| &w.harnesses)
-        .filter_map(|h| h.color)
-        .collect();
+/// An agent's color follows its name (FNV-1a), so it is the same after a
+/// restart or when the agent comes back. Two names can share one.
+pub fn agent_color(name: &str) -> usize {
+    let hash = name.bytes().fold(0xcbf29ce484222325u64, |h, b| {
+        (h ^ b as u64).wrapping_mul(0x100000001b3)
+    });
+    AGENT_COLORS[(hash >> 32) as usize % AGENT_COLORS.len()]
+}
+
+pub fn assign_agent_colors(workspaces: &mut [Workspace]) {
     for harness in workspaces.iter_mut().flat_map(|w| &mut w.harnesses) {
-        if harness.color.is_some() {
-            continue;
-        }
-        let mut free: Vec<usize> = AGENT_COLORS
-            .into_iter()
-            .filter(|c| !used.contains(c))
-            .collect();
-        if free.is_empty() {
-            free = AGENT_COLORS.to_vec();
-        }
-        seed = seed
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        let color = free[(seed >> 33) as usize % free.len()];
-        harness.color = Some(color);
-        used.push(color);
+        harness.color = Some(agent_color(&harness.name));
     }
 }
 
@@ -283,35 +270,11 @@ mod color_tests {
     use super::*;
 
     #[test]
-    fn colors_are_unique_while_free_and_allowed() {
-        let mut ws = vec![Workspace {
-            id: WorkspaceId::new(1),
-            name: String::new(),
-            path: String::new(),
-            accent: 0,
-            expanded: true,
-            harnesses: (1..=6)
-                .map(|i| Harness {
-                    id: HarnessId::new(i),
-                    workspace: WorkspaceId::new(1),
-                    name: String::new(),
-                    kind: HarnessKind::Shell,
-                    cwd: String::new(),
-                    status: HarnessStatus::Idle,
-                    subagents: Vec::new(),
-                    unread: 0,
-                    tag: String::new(),
-                    title: String::new(),
-                    pronouns: String::new(),
-                    color: None,
-                    announced: true,
-                    started: true,
-                })
-                .collect(),
-        }];
-        assign_agent_colors(&mut ws, 42);
-        let mut got: Vec<_> = ws[0].harnesses.iter().map(|h| h.color.unwrap()).collect();
-        got.sort();
-        assert_eq!(got, AGENT_COLORS);
+    fn color_depends_only_on_the_name() {
+        assert_eq!(agent_color("Sable"), agent_color("Sable"));
+        assert!(AGENT_COLORS.contains(&agent_color("Quill")));
+        let names = ["Sable", "Quill", "Tamsin", "Okonkwo", "Wren", "Bartholomew"];
+        let colors: std::collections::HashSet<_> = names.iter().map(|n| agent_color(n)).collect();
+        assert!(colors.len() > 1);
     }
 }

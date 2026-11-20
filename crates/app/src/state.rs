@@ -188,7 +188,7 @@ impl TermdenApp {
             .flatten();
 
         let mut workspaces = state.workspaces;
-        termden_core::assign_agent_colors(&mut workspaces, color_seed());
+        termden_core::assign_agent_colors(&mut workspaces);
         let stats_open = config.stats_open || mode == Mode::Demo;
         let mut app = Self {
             mode,
@@ -1386,10 +1386,4 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
     };
     let path = root.join(cwd);
     if path.is_dir() { path } else { home }
-}
-
-pub fn color_seed() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos() as u64)
 }

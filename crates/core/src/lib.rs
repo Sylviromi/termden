@@ -13,6 +13,6 @@ pub use config::{Config, ThemeId, TitleBar};
 pub use layout::{Axis, DropZone, LayoutNode};
 pub use model::{
     AGENT_COLORS, Activity, Harness, HarnessId, HarnessKind, HarnessStatus, Mail, ShowItem,
-    Showcase, Subagent, SubagentId, Workspace, WorkspaceId, assign_agent_colors,
+    Showcase, Subagent, SubagentId, Workspace, WorkspaceId, agent_color, assign_agent_colors,
 };
 pub use state::AppState;

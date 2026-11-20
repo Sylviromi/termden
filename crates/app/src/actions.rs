@@ -314,7 +314,7 @@ impl TermdenApp {
         let harness = new_harness(id, ws, kind, &workspace.harnesses);
         workspace.harnesses.push(harness);
         workspace.expanded = true;
-        termden_core::assign_agent_colors(&mut self.workspaces, crate::state::color_seed());
+        termden_core::assign_agent_colors(&mut self.workspaces);
 
         let target = self
             .focused
@@ -417,6 +417,7 @@ impl TermdenApp {
                 .next()
                 .map_or(String::new(), |c| c.to_uppercase().chain(chars).collect());
         }
+        termden_core::assign_agent_colors(&mut self.workspaces);
         if let Some(old_name) = old_name
             && let Some((workspace, harness)) = self.harness(id)
         {
