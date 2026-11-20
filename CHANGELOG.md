@@ -5,6 +5,13 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.3.0
+
+- New Sidebar setting: Pinned (as before) or Auto-hide, which hides the sidebar until you move the pointer to the left screen edge and slides it out over the tiles
+- Desktop notification when an agent needs input or shares results, with the termden icon, grouped under its desktop entry
+- Agents keep the same color across restarts
+- A divider between the ACTIVITY and STATS toggles
+
 ## v0.2.0
 
 - The activity feed collapses: ACTIVITY and STATS toggles now sit in the sidebar footer (the "working / harnesses" tally is gone), and the choice is remembered
