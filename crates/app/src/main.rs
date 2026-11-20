@@ -87,7 +87,7 @@ fn main() {
                 WindowDecorations::Client
             }),
             app_id: Some("termden".into()),
-            window_background: WindowBackgroundAppearance::Opaque,
+            window_background: WindowBackgroundAppearance::Transparent,
             window_min_size: Some(size(px(980.), px(600.))),
             ..Default::default()
         };

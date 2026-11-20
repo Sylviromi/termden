@@ -1265,6 +1265,9 @@ impl TermdenApp {
             .relative()
             .size_full()
             .bg(self.theme.crust)
+            .when(round_corners, |root| {
+                root.rounded(px(self.config.corner_radius))
+            })
             .font_family(self.theme.ui_font.clone())
             .track_focus(&self.focus)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
