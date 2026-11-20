@@ -1398,7 +1398,17 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
 /// front; silently nothing where `notify-send` is missing.
 pub fn notify(who: &str, what: &str) {
     let _ = std::process::Command::new("notify-send")
-        .args(["-a", "termden", "--", who, what])
+        .args([
+            "-a",
+            "termden",
+            "-i",
+            "termden",
+            "-h",
+            "string:desktop-entry:termden",
+            "--",
+            who,
+            what,
+        ])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
