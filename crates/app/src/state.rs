@@ -95,7 +95,7 @@ pub struct TermdenApp {
     /// Workspace whose "add harness" picker is open.
     pub adding: Option<WorkspaceId>,
     /// Workspace awaiting a second click to confirm removal.
-    pub confirm_remove: Option<WorkspaceId>,
+    pub confirm_remove: Option<(WorkspaceId, Instant)>,
     /// Harness whose close was requested once; a second request within a few
     /// seconds kills it.
     pub confirm_close: Option<(HarnessId, Instant)>,
@@ -322,6 +322,11 @@ impl TermdenApp {
             }
             _ => self.confirm_close = Some((id, Instant::now())),
         }
+    }
+
+    pub fn remove_armed(&self, id: WorkspaceId) -> bool {
+        self.confirm_remove
+            .is_some_and(|(armed, at)| armed == id && at.elapsed() < Duration::from_secs(3))
     }
 
     pub fn close_armed(&self, id: HarnessId) -> bool {

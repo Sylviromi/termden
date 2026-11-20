@@ -2,6 +2,7 @@ use gpui::{
     AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, Window,
     div, prelude::*, px,
 };
+use std::time::Instant;
 use termden_core::{Activity, Harness, HarnessKind, Workspace};
 
 use crate::state::{Mode, TermdenApp};
@@ -584,18 +585,25 @@ fn workspace_card(
                         cx.notify();
                     })),
                 )
-                .children(active.then(|| {
+                .child(
                     icon_button(
                         ElementId::named_usize("ws-remove", id.raw() as usize),
                         icons::CLOSE,
                         theme,
                     )
+                    .when(app.remove_armed(id), |button| {
+                        button.bg(theme.red.opacity(0.18)).text_color(theme.red)
+                    })
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.confirm_remove = Some(id);
-                        this.adding = None;
+                        if this.remove_armed(id) {
+                            this.remove_workspace(id);
+                        } else {
+                            this.confirm_remove = Some((id, Instant::now()));
+                            this.adding = None;
+                        }
                         cx.notify();
-                    }))
-                }))
+                    })),
+                )
                 .child(
                     icon_button(
                         ElementId::named_usize("chevron", id.raw() as usize),
@@ -613,7 +621,6 @@ fn workspace_card(
                 ),
         )
         .children((app.adding == Some(id)).then(|| kind_picker(app, workspace, cx)))
-        .children((app.confirm_remove == Some(id)).then(|| confirm_remove(app, workspace, cx)))
         .children(list.then(|| {
             div()
                 .flex()
@@ -1039,70 +1046,6 @@ fn kind_picker(
                         ),
                 )
         }))
-        .into_any_element()
-}
-
-fn confirm_remove(
-    app: &TermdenApp,
-    workspace: &Workspace,
-    cx: &mut Context<TermdenApp>,
-) -> AnyElement {
-    let theme = &app.theme;
-    let ws = workspace.id;
-    let count = workspace.harnesses.len();
-
-    div()
-        .flex()
-        .items_center()
-        .gap(px(6.))
-        .mx(px(9.))
-        .mb(px(6.))
-        .p(px(7.))
-        .rounded(px(6.))
-        .bg(theme.red.opacity(0.08))
-        .border_1()
-        .border_color(theme.red.opacity(0.3))
-        .child(
-            div()
-                .flex_1()
-                .text_size(theme.ui(9.5))
-                .text_color(theme.subtext)
-                .child(format!(
-                    "remove and kill {count} harness{}?",
-                    if count == 1 { "" } else { "es" }
-                )),
-        )
-        .child(
-            div()
-                .id(ElementId::named_usize("confirm-remove", ws.raw() as usize))
-                .px(px(6.))
-                .py(px(2.))
-                .rounded(px(4.))
-                .bg(theme.red.opacity(0.2))
-                .text_size(theme.ui(9.5))
-                .text_color(theme.red)
-                .cursor_pointer()
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.remove_workspace(ws);
-                    cx.notify();
-                }))
-                .child("remove"),
-        )
-        .child(
-            div()
-                .id(ElementId::named_usize("cancel-remove", ws.raw() as usize))
-                .px(px(6.))
-                .py(px(2.))
-                .rounded(px(4.))
-                .text_size(theme.ui(9.5))
-                .text_color(theme.overlay)
-                .cursor_pointer()
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.confirm_remove = None;
-                    cx.notify();
-                }))
-                .child("cancel"),
-        )
         .into_any_element()
 }
 
