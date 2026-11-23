@@ -94,8 +94,11 @@ pub struct TermdenApp {
     pub activity_stick: std::cell::Cell<bool>,
     /// Workspace whose "add harness" picker is open.
     pub adding: Option<WorkspaceId>,
+    /// Right-click menu: workspace and window position of the click.
+    pub ws_menu: Option<(WorkspaceId, (f32, f32))>,
     /// Workspace awaiting a second click to confirm removal.
     pub confirm_remove: Option<(WorkspaceId, Instant)>,
+    pub unloaded_open: bool,
     /// Harness whose close was requested once; a second request within a few
     /// seconds kills it.
     pub confirm_close: Option<(HarnessId, Instant)>,
@@ -154,10 +157,13 @@ impl TermdenApp {
     pub fn new(config: Config, mode: Mode, cx: &mut Context<Self>) -> Self {
         let theme = Theme::for_id(&config.theme.0, &config);
 
-        let state = match mode {
+        let mut state = match mode {
             Mode::Demo => mock::build(),
             Mode::Live | Mode::Mirror => AppState::load().unwrap_or_else(actions::first_run),
         };
+        if mode == Mode::Live {
+            actions::ensure_home(&mut state);
+        }
         let active = state
             .active
             .filter(|id| state.workspaces.iter().any(|w| w.id == *id))
@@ -219,7 +225,9 @@ impl TermdenApp {
             activity_smooth: Default::default(),
             activity_stick: std::cell::Cell::new(true),
             adding: None,
+            ws_menu: None,
             confirm_remove: None,
+            unloaded_open: false,
             confirm_close: None,
             zoomed: None,
             resizing: None,
@@ -403,7 +411,13 @@ impl TermdenApp {
         // demo keeps to what is on screen.
         let mut tiles = self.tile_rects.clone();
         if self.mode != Mode::Demo {
-            for ws in self.workspaces.iter().map(|w| w.id).collect::<Vec<_>>() {
+            for ws in self
+                .workspaces
+                .iter()
+                .filter(|w| !w.unloaded)
+                .map(|w| w.id)
+                .collect::<Vec<_>>()
+            {
                 for (id, rect) in self.layout_tiles(ws) {
                     if !tiles.iter().any(|(t, _)| *t == id) {
                         tiles.push((id, rect));
@@ -430,7 +444,7 @@ impl TermdenApp {
             let command = match harness.kind {
                 HarnessKind::Shell => None,
                 kind if self.mode == Mode::Mirror => Some(kind.default_command().to_string()),
-                kind => Some(launch::command(id, &harness.name, kind)),
+                kind => Some(launch::command(id, &harness.name, kind, workspace.home)),
             };
             match Session::spawn(
                 id,
@@ -869,6 +883,7 @@ impl TermdenApp {
         self.active = id;
         if let Some(workspace) = self.workspace_mut(id) {
             workspace.expanded = true;
+            workspace.unloaded = false;
         }
 
         let focused_in_workspace = self
@@ -1432,6 +1447,7 @@ impl TermdenApp {
             .children(self.hover_url_element())
             .children(crate::settings::render(self, window, cx))
             .children(crate::update::render(self, cx))
+            .children(crate::panel::workspace_menu(self, cx))
             .children(ghost)
             .into_any_element()
     }

@@ -32,6 +32,31 @@ pub fn first_run() -> AppState {
     state
 }
 
+/// The pinned Home workspace: a Claude tile in `$HOME` for creating
+/// workspaces and general talk. Recreated when missing, never removable.
+pub fn ensure_home(state: &mut AppState) {
+    if state.workspaces.iter().any(|w| w.home) {
+        return;
+    }
+    let dir = std::env::var("HOME").unwrap_or_else(|_| "/".into());
+    let ws = state.next_workspace_id();
+    let id = state.next_harness_id();
+    state.workspaces.insert(
+        0,
+        Workspace {
+            id: ws,
+            name: "Home".into(),
+            path: dir,
+            accent: 0,
+            expanded: true,
+            home: true,
+            unloaded: false,
+            harnesses: vec![new_harness(id, ws, HarnessKind::ClaudeCode, &[])],
+        },
+    );
+    state.layouts.insert(ws, LayoutNode::leaf(id));
+}
+
 fn new_workspace(state: &mut AppState, dir: &Path) -> WorkspaceId {
     let id = state.next_workspace_id();
     let name = dir
@@ -44,6 +69,8 @@ fn new_workspace(state: &mut AppState, dir: &Path) -> WorkspaceId {
         path: dir.display().to_string(),
         accent: state.workspaces.len() % 8,
         expanded: true,
+        home: false,
+        unloaded: false,
         harnesses: Vec::new(),
     });
     id
@@ -380,7 +407,29 @@ impl TermdenApp {
         self.save();
     }
 
+    /// Put a workspace away: drop its sessions (tmux keeps the processes) and
+    /// move focus to a loaded one. Home stays.
+    pub fn unload_workspace(&mut self, ws: WorkspaceId) {
+        let Some(workspace) = self.workspace_mut(ws).filter(|w| !w.home) else {
+            return;
+        };
+        workspace.unloaded = true;
+        let ids: Vec<HarnessId> = workspace.harnesses.iter().map(|h| h.id).collect();
+        for id in ids {
+            self.sessions.remove(&id);
+        }
+        if self.active == ws {
+            if let Some(next) = self.workspaces.iter().find(|w| !w.unloaded).map(|w| w.id) {
+                self.activate_workspace(next);
+            }
+        }
+        self.save();
+    }
+
     pub fn remove_workspace(&mut self, ws: WorkspaceId) {
+        if self.workspace(ws).is_some_and(|w| w.home) {
+            return;
+        }
         let ids: Vec<HarnessId> = self
             .workspace(ws)
             .map(|w| w.harnesses.iter().map(|h| h.id).collect())

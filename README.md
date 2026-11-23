@@ -114,7 +114,7 @@ termdenctl add claude|opencode|pi|shell [ws]   # prints the new id
 termdenctl wait <h>                   # until it stops printing (after add, too)
 termdenctl send --enter <h> 'cargo test'       # type into it; key <h> ctrl-c
 termdenctl close|restart|focus <h> | rename <h> <name>
-termdenctl add-workspace <dir> | activate <ws> | rename-workspace <ws> <name>
+termdenctl add-workspace <dir> | activate <ws> | unload <ws> | rename-workspace <ws> <name>
 termdenctl log "note"                 # to the activity feed, as `self`
 termdenctl stats [on|off]             # JSON: tokens, MCPs, uptime per workspace
 termdenctl screenshot [out.png]       # headless mirror of the live app

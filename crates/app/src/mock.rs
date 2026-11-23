@@ -21,6 +21,8 @@ pub fn build() -> AppState {
             path: "~/code/termden".into(),
             accent: 0,
             expanded: true,
+            home: false,
+            unloaded: false,
             harnesses: vec![
                 Harness {
                     id: HarnessId::new(1),
@@ -81,6 +83,8 @@ pub fn build() -> AppState {
             path: "~/src/api".into(),
             accent: 1,
             expanded: true,
+            home: false,
+            unloaded: false,
             harnesses: vec![
                 Harness {
                     id: HarnessId::new(4),
@@ -122,6 +126,8 @@ pub fn build() -> AppState {
             path: "~/infra".into(),
             accent: 3,
             expanded: false,
+            home: false,
+            unloaded: false,
             harnesses: vec![
                 Harness {
                     id: HarnessId::new(6),

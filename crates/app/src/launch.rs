@@ -9,8 +9,10 @@ use serde_json::json;
 use termden_core::state::{control_socket, runtime_dir};
 use termden_core::{HarnessId, HarnessKind};
 
-fn prompt(id: HarnessId, name: &str) -> String {
-    format!(
+const HOME_PROMPT: &str = " You are the Home agent: you belong to no project. Your job is creating workspaces and general conversation with the user. To make a workspace run `termdenctl add-workspace <dir>` (create the folder first if needed; it prints the workspace id); start an agent there with `termdenctl add claude <workspace id>` only if the user wants one. Do not do project work yourself: point the user to the workspace's agents.";
+
+fn prompt(id: HarnessId, name: &str, home: bool) -> String {
+    let text = format!(
         "You are running inside termden as harness {} (named {name}). Other agents run in tiles \
          beside you. The termden MCP server gives you tools (in Claude Code they are named \
          mcp__termden__<tool>; if they are deferred, load them with ToolSearch first, and never \
@@ -31,17 +33,18 @@ fn prompt(id: HarnessId, name: &str) -> String {
          Git commits from your tile are refused until you have a name and a tag; the commit hook adds the closing line `> Written by <name> [<tag>].` itself, so never write your own sign-off or co-author line, and keep subjects clean (type(scope): summary). Do not type into other agents terminals except helpers you started, and do not move or \
          resize tiles.",
         id.raw(),
-    )
+    );
+    if home { text + HOME_PROMPT } else { text }
 }
 
 /// Shell command line for a new harness; written files live under
 /// `$XDG_RUNTIME_DIR/termden/harness/<id>/`.
-pub fn command(id: HarnessId, name: &str, kind: HarnessKind) -> String {
+pub fn command(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> String {
     let base = kind.default_command();
     if !matches!(kind, HarnessKind::ClaudeCode | HarnessKind::OpenCode) {
         return base.into();
     }
-    match write_config(id, name, kind) {
+    match write_config(id, name, kind, home) {
         Some(command) => command,
         None => {
             eprintln!("termden: could not write launch config; starting {base} plain");
@@ -50,7 +53,7 @@ pub fn command(id: HarnessId, name: &str, kind: HarnessKind) -> String {
     }
 }
 
-fn write_config(id: HarnessId, name: &str, kind: HarnessKind) -> Option<String> {
+fn write_config(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Option<String> {
     let dir: PathBuf = runtime_dir().join("harness").join(id.raw().to_string());
     fs::create_dir_all(&dir).ok()?;
     let ctl = crate::pty::bin_dir()?.join("termdenctl");
@@ -84,12 +87,12 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind) -> Option<String> 
                 "claude --settings {} --mcp-config {} --append-system-prompt '{}'",
                 q(&settings),
                 q(&mcp),
-                prompt(id, name).replace('\'', "")
+                prompt(id, name, home).replace('\'', "")
             ))
         }
         _ => {
             let notes = dir.join("instructions.md");
-            fs::write(&notes, prompt(id, name)).ok()?;
+            fs::write(&notes, prompt(id, name, home)).ok()?;
             let config = dir.join("opencode.json");
             let body = json!({
                 "instructions": [notes],

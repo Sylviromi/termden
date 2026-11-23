@@ -171,6 +171,13 @@ pub struct Workspace {
     /// Index into the active theme's accent palette.
     pub accent: usize,
     pub expanded: bool,
+    /// The pinned general-purpose workspace (not tied to a project folder).
+    #[serde(default)]
+    pub home: bool,
+    /// Put away: shown in the Unloaded section, its tiles detached (the
+    /// tmux sessions keep running).
+    #[serde(default)]
+    pub unloaded: bool,
     pub harnesses: Vec<Harness>,
 }
 

@@ -1,6 +1,6 @@
 use gpui::{
-    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, PathPromptOptions, Window,
-    div, prelude::*, px,
+    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent,
+    PathPromptOptions, Window, div, prelude::*, px,
 };
 use std::time::Instant;
 use termden_core::{Activity, Harness, HarnessKind, Workspace};
@@ -220,9 +220,90 @@ fn list(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         .children(
             app.workspaces
                 .iter()
+                .filter(|w| !w.unloaded)
                 .map(|workspace| workspace_card(app, workspace, cx)),
         )
+        .children(unloaded_section(app, cx))
         .into_any_element()
+}
+
+fn unloaded_section(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
+    let theme = &app.theme;
+    let parked: Vec<_> = app.workspaces.iter().filter(|w| w.unloaded).collect();
+    if parked.is_empty() {
+        return None;
+    }
+    let open = app.unloaded_open;
+    let hover_bg = theme.surface0.opacity(0.32);
+    Some(
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(2.))
+            .mt(px(6.))
+            .child(
+                div()
+                    .id("unloaded-toggle")
+                    .flex()
+                    .items_center()
+                    .gap(px(4.))
+                    .px(px(4.))
+                    .h(px(22.))
+                    .cursor_pointer()
+                    .rounded(px(6.))
+                    .hover(move |style| style.bg(hover_bg))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.unloaded_open = !this.unloaded_open;
+                        cx.notify();
+                    }))
+                    .child(
+                        div()
+                            .font_family(ICON_FONT)
+                            .text_size(theme.ui(14.))
+                            .text_color(theme.overlay)
+                            .child(if open {
+                                icons::EXPAND_MORE
+                            } else {
+                                icons::CHEVRON_RIGHT
+                            }),
+                    )
+                    .child(
+                        div()
+                            .text_size(theme.ui(9.5))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(theme.overlay)
+                            .child(format!("UNLOADED · {}", parked.len())),
+                    ),
+            )
+            .children(open.then(|| {
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(1.))
+                    .children(parked.into_iter().map(|w| {
+                        let id = w.id;
+                        div()
+                            .id(ElementId::named_usize("unloaded", id.raw() as usize))
+                            .flex()
+                            .items_center()
+                            .h(px(26.))
+                            .px(px(10.))
+                            .rounded(px(6.))
+                            .cursor_pointer()
+                            .hover(move |style| style.bg(hover_bg))
+                            .text_size(theme.ui(12.))
+                            .text_color(theme.subtext)
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(w.name.clone())
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.activate_workspace(id);
+                                cx.notify();
+                            }))
+                    }))
+            }))
+            .into_any_element(),
+    )
 }
 
 fn section_header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
@@ -484,24 +565,42 @@ fn workspace_card(
     let theme = &app.theme;
     let accent = theme.accent(workspace.accent);
     let active = workspace.id == app.active;
+    let menu_open = app.ws_menu.is_some_and(|(w, _)| w == workspace.id);
     let hover_bg = theme.surface0.opacity(0.32);
     let id = workspace.id;
     // Collapsed and empty workspaces show no harness list, whose padding
     // otherwise spaces the card's bottom; the header pads it instead.
     let list = workspace.expanded && !workspace.harnesses.is_empty();
+    let compact = !workspace.expanded && workspace.harnesses.is_empty();
 
     div()
         .id(ElementId::named_usize("workspace", id.raw() as usize))
+        .on_mouse_down(
+            MouseButton::Right,
+            cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                this.ws_menu = Some((
+                    id,
+                    (f32::from(event.position.x), f32::from(event.position.y)),
+                ));
+                this.adding = None;
+                this.confirm_remove = None;
+                cx.notify();
+            }),
+        )
         .flex()
         .flex_col()
         .rounded(px(9.))
-        .bg(if active {
+        .bg(if menu_open {
+            accent.opacity(0.10)
+        } else if active {
             accent.opacity(0.07)
         } else {
             theme.text.opacity(0.0)
         })
         .border_1()
-        .border_color(if active {
+        .border_color(if menu_open {
+            accent.opacity(0.35)
+        } else if active {
             accent.opacity(0.20)
         } else {
             theme.text.opacity(0.07)
@@ -510,10 +609,16 @@ fn workspace_card(
             div()
                 .flex()
                 .items_center()
-                .h(px(46.))
+                .h(px(if compact { 30. } else { 46. }))
                 .px(px(7.))
-                .mt(px(6.))
-                .mb(px(if list { 0. } else { 6. }))
+                .mt(px(if compact { 3. } else { 6. }))
+                .mb(px(if list {
+                    0.
+                } else if compact {
+                    3.
+                } else {
+                    6.
+                }))
                 .gap(px(5.))
                 .child(
                     div()
@@ -535,7 +640,7 @@ fn workspace_card(
                             div()
                                 .flex_shrink_0()
                                 .w(px(3.))
-                                .h(px(24.))
+                                .h(px(if compact { 16. } else { 24. }))
                                 .rounded(px(2.))
                                 .bg(if active {
                                     accent
@@ -553,7 +658,7 @@ fn workspace_card(
                                 .child(
                                     div()
                                         .relative()
-                                        .top(px(4.))
+                                        .top(px(if compact { 0. } else { 4. }))
                                         .text_size(theme.ui(12.5))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(if active { theme.text } else { theme.subtext })
@@ -562,15 +667,19 @@ fn workspace_card(
                                         .line_clamp(1)
                                         .child(workspace.name.clone()),
                                 )
-                                .child(
+                                .children((!compact).then(|| {
                                     div()
                                         .text_size(theme.ui(10.))
                                         .text_color(theme.subtext.opacity(0.6))
                                         .overflow_hidden()
                                         .text_ellipsis()
                                         .line_clamp(1)
-                                        .child(workspace.path.clone()),
-                                ),
+                                        .child(if workspace.home {
+                                            "general · no project".to_string()
+                                        } else {
+                                            workspace.path.clone()
+                                        })
+                                })),
                         )
                         .child(div().flex().items_center().gap(px(4.)).children(
                             (workspace.unread() > 0).then(|| {
@@ -582,41 +691,6 @@ fn workspace_card(
                                 )
                             }),
                         )),
-                )
-                .child(
-                    icon_button(
-                        ElementId::named_usize("ws-add", id.raw() as usize),
-                        icons::ADD,
-                        theme,
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.adding = if this.adding == Some(id) {
-                            None
-                        } else {
-                            Some(id)
-                        };
-                        this.confirm_remove = None;
-                        cx.notify();
-                    })),
-                )
-                .child(
-                    icon_button(
-                        ElementId::named_usize("ws-remove", id.raw() as usize),
-                        icons::CLOSE,
-                        theme,
-                    )
-                    .when(app.remove_armed(id), |button| {
-                        button.bg(theme.red.opacity(0.18)).text_color(theme.red)
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.remove_armed(id) {
-                            this.remove_workspace(id);
-                        } else {
-                            this.confirm_remove = Some((id, Instant::now()));
-                            this.adding = None;
-                        }
-                        cx.notify();
-                    })),
                 )
                 .child(
                     icon_button(
@@ -1000,6 +1074,102 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
             )),
         )
         .into_any_element()
+}
+
+pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
+    let (id, (x, y)) = app.ws_menu?;
+    let workspace = app.workspace(id)?;
+    let theme = &app.theme;
+    let hover_bg = theme.surface0.opacity(0.5);
+    let row = |name: &'static str, label: &str, color: Hsla| {
+        div()
+            .id(ElementId::named_usize(name, id.raw() as usize))
+            .px(px(10.))
+            .h(px(26.))
+            .flex()
+            .items_center()
+            .rounded(px(6.))
+            .cursor_pointer()
+            .hover(move |style| style.bg(hover_bg))
+            .text_size(theme.ui(12.))
+            .text_color(color)
+            .child(label.to_string())
+    };
+    let (vw, vh) = app.viewport;
+    let accent = theme.accent(workspace.accent);
+    let (w, h) = (170., 96.);
+    let card = div()
+        .id("ws-menu")
+        .absolute()
+        .left(px(x.min(vw - w - 6.).max(6.)))
+        .top(px(y.min(vh - h - 6.).max(6.)))
+        .w(px(w))
+        .p(px(4.))
+        .flex()
+        .flex_col()
+        .rounded(px(9.))
+        .bg(theme.mantle)
+        .border_1()
+        .border_color(accent.opacity(0.35))
+        .shadow_lg()
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
+        .child(
+            row("menu-add", "Add agent", theme.text).on_click(cx.listener(
+                move |this, _, _, cx| {
+                    this.adding = Some(id);
+                    this.ws_menu = None;
+                    cx.notify();
+                },
+            )),
+        )
+        .children((!workspace.home).then(|| {
+            row("menu-unload", "Unload", theme.text).on_click(cx.listener(move |this, _, _, cx| {
+                this.ws_menu = None;
+                this.unload_workspace(id);
+                cx.notify();
+            }))
+        }))
+        .children((!workspace.home).then(|| {
+            let armed = app.remove_armed(id);
+            row(
+                "menu-close",
+                if armed {
+                    "Click again to close"
+                } else {
+                    "Close"
+                },
+                theme.red,
+            )
+            .when(armed, |r| r.bg(theme.red.opacity(0.18)))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if this.remove_armed(id) {
+                    this.ws_menu = None;
+                    this.remove_workspace(id);
+                } else {
+                    this.confirm_remove = Some((id, Instant::now()));
+                }
+                cx.notify();
+            }))
+        }));
+    let dismiss = |this: &mut TermdenApp,
+                   _: &MouseDownEvent,
+                   _: &mut Window,
+                   cx: &mut Context<TermdenApp>| {
+        this.ws_menu = None;
+        cx.notify();
+    };
+    Some(
+        div()
+            .id("ws-menu-backdrop")
+            .absolute()
+            .inset_0()
+            .occlude()
+            .on_mouse_down(MouseButton::Left, cx.listener(dismiss))
+            .on_mouse_down(MouseButton::Right, cx.listener(dismiss))
+            .child(card)
+            .into_any_element(),
+    )
 }
 
 fn kind_picker(

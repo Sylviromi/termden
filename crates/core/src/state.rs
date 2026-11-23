@@ -153,6 +153,8 @@ mod tests {
                 path: "/tmp".into(),
                 accent: 0,
                 expanded: true,
+                home: false,
+                unloaded: false,
                 harnesses: vec![Harness {
                     id: HarnessId::new(4),
                     workspace: ws,

@@ -111,7 +111,8 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   tag <h> [text]             set a harness role tag (empty clears)
   pronouns <h> [text]        set a harness's pronouns (empty clears)
   add-workspace <dir>        new workspace on a folder
-  activate <ws>              switch workspace
+  activate <ws>              switch workspace (also loads an unloaded one)
+  unload <ws>                put a workspace away (not Home); tmux keeps running
   rename-workspace <ws> <n>  rename a workspace
   mail-send <json>           deliver {from,to,text} (JSON keys, from may be 0)
   mail-read <h>              JSON: unread messages for <h>, marked read
@@ -307,6 +308,13 @@ impl TermdenApp {
             "activate" => match self.find_workspace(arg) {
                 Some(ws) => {
                     self.activate_workspace(ws);
+                    "ok".into()
+                }
+                None => "error: unknown workspace".into(),
+            },
+            "unload" => match self.find_workspace(arg) {
+                Some(ws) => {
+                    self.unload_workspace(ws);
                     "ok".into()
                 }
                 None => "error: unknown workspace".into(),
