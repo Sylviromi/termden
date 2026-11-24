@@ -815,12 +815,16 @@ impl TermdenApp {
 
     pub fn set_status(&mut self, id: HarnessId, status: HarnessStatus) {
         let mut first_work = false;
+        let mut unannounced = false;
         if let Some(harness) = self
             .workspaces
             .iter_mut()
             .find_map(|workspace| workspace.harness_mut(id))
         {
             harness.status = status;
+            unannounced = status == HarnessStatus::Working
+                && harness.kind != HarnessKind::Shell
+                && !harness.announced;
             if status == HarnessStatus::Working
                 && harness.kind != HarnessKind::Shell
                 // Startup output is not work: wait until the agent has said
@@ -834,6 +838,10 @@ impl TermdenApp {
         }
         if first_work {
             self.log_harness(id, "started working".into());
+        }
+        // Names are assigned at creation; the first sign of work is arrival.
+        if unannounced {
+            self.announce_name(id);
         }
         if status == HarnessStatus::NeedsInput
             && let Some((_, harness)) = self.harness(id)

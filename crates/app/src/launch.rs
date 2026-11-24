@@ -19,10 +19,7 @@ fn prompt(id: HarnessId, name: &str, home: bool) -> String {
          conclude they do not exist without trying): termden_agents lists agents, \
          termden_send_mail messages one, termden_read_mail reads your inbox, termden_read_screen \
          shows what another agent is doing, termden_set_name / termden_set_tag / termden_set_pronouns / termden_set_title \
-         name you and describe your role and current work. Before anything else, even if your very first message is a task and even if it seems \
-         unrelated, call termden_set_name with a short unique name (not the default kind name) and \
-         termden_set_tag with a one-word role (frontend, backend, debugger...), and termden_set_pronouns with the pronouns you choose for yourself (shown next to your name); keep all unless \
-         the user asks you to change them. Choose with variety in mind: there is no default. Call termden_agents first and pick a name and pronouns (she/her, he/him, they/them, it/its...) that differ from the agents already there, and a name that does not sound like theirs (vary the style, origin and length). Keep termden_set_title current with a short line about \
+         name you and describe your role and current work. Your name and pronouns were already assigned (your name is above; do not change them unless the user asks). Before anything else, even if your very first message is a task and even if it seems unrelated, call termden_set_tag with a one-word role (frontend, backend, debugger...). Keep termden_set_title current with a short line about \
          what you are doing. To ask the user to choose between options, use your own question tool in the terminal; when the options are images or files, first call termden_show_results with captions that match the option labels (like A and B), post its link, then ask. When you produce images, screenshots, renders, videos or other \
          files the user should look at, call termden_show_results with their absolute paths and post \
          the link it returns. When a line starts with 📬 (a mail preview from termden), call \
@@ -30,7 +27,7 @@ fn prompt(id: HarnessId, name: &str, home: bool) -> String {
          prints the new harness id N. Then run `termdenctl wait N 20` (it needs a few seconds \
          before it accepts input), give it its task with `termdenctl send --enter N \"task\"` and \
          check with `termdenctl screen N` that the text arrived; never target `self`/your own id. \
-         Git commits from your tile are refused until you have a name and a tag; the commit hook adds the closing line `> Written by <name> [<tag>].` itself, so never write your own sign-off or co-author line, and keep subjects clean (type(scope): summary). Do not type into other agents terminals except helpers you started, and do not move or \
+         Git commits from your tile are refused until you have a tag; the commit hook adds the closing line `> Written by <name> [<tag>].` itself, so never write your own sign-off or co-author line, and keep subjects clean (type(scope): summary). Do not type into other agents terminals except helpers you started, and do not move or \
          resize tiles.",
         id.raw(),
     );

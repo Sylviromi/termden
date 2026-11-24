@@ -51,7 +51,11 @@ pub fn ensure_home(state: &mut AppState) {
             expanded: true,
             home: true,
             unloaded: false,
-            harnesses: vec![new_harness(id, ws, HarnessKind::ClaudeCode, &[])],
+            harnesses: {
+                let mut home = new_harness(id, ws, HarnessKind::ClaudeCode, &[]);
+                (home.name, home.pronouns) = pick_identity(&[]);
+                vec![home]
+            },
         },
     );
     state.layouts.insert(ws, LayoutNode::leaf(id));
@@ -102,6 +106,45 @@ fn is_placeholder_name(name: &str) -> bool {
                     .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
             })
     })
+}
+
+const NAMES: &[&str] = &[
+    "Ada", "Anselm", "Aster", "Bram", "Brindle", "Calla", "Cato", "Cinder", "Dara", "Dov", "Eira",
+    "Elm", "Faye", "Fenn", "Fig", "Gale", "Gideon", "Haru", "Hazel", "Idris", "Ilse", "Ines",
+    "Jory", "Juno", "Kestrel", "Kofi", "Lark", "Linden", "Lyra", "Maren", "Marlow", "Mika", "Mosa",
+    "Nell", "Nico", "Noor", "Oak", "Odette", "Orin", "Pax", "Pip", "Quill", "Rafa", "Rho", "Rune",
+    "Sable", "Saga", "Sol", "Soren", "Tamsin", "Tarn", "Teo", "Thistle", "Ume", "Una", "Vesper",
+    "Vik", "Wren", "Xan", "Yara", "Yuki", "Zeph", "Zora", "Basil", "Cleo", "Dune", "Esme", "Finn",
+    "Gus", "Hana", "Ivo", "Jun", "Kit", "Lio", "Moss", "Nyx",
+];
+const PRONOUNS: &[&str] = &["she/her", "he/him", "they/them", "it/its"];
+
+/// A name and pronouns for a new agent: a name nobody else uses, chosen at
+/// random from the pool; pronouns are drawn separately from the name.
+fn pick_identity(taken: &[String]) -> (String, String) {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_nanos() as usize ^ d.as_secs() as usize);
+    let start = nanos.wrapping_mul(2654435761) % NAMES.len();
+    let free = (0..NAMES.len())
+        .map(|i| NAMES[(start + i) % NAMES.len()])
+        .find(|name| !taken.iter().any(|t| t.eq_ignore_ascii_case(name)));
+    let name = free.map_or_else(
+        || format!("{} {}", NAMES[start], taken.len() + 1),
+        String::from,
+    );
+    let pronouns = PRONOUNS[(nanos / 7) % PRONOUNS.len()];
+    (name, pronouns.to_string())
+}
+
+impl TermdenApp {
+    fn all_agent_names(&self) -> Vec<String> {
+        self.workspaces
+            .iter()
+            .flat_map(|w| &w.harnesses)
+            .map(|h| h.name.clone())
+            .collect()
+    }
 }
 
 fn new_harness(id: HarnessId, ws: WorkspaceId, kind: HarnessKind, siblings: &[Harness]) -> Harness {
@@ -339,8 +382,13 @@ impl TermdenApp {
     /// tile's longer side).
     pub fn add_harness(&mut self, ws: WorkspaceId, kind: HarnessKind) -> Option<HarnessId> {
         let id = self.snapshot().next_harness_id();
+        let identity = (kind != HarnessKind::Shell).then(|| pick_identity(&self.all_agent_names()));
         let workspace = self.workspace_mut(ws)?;
-        let harness = new_harness(id, ws, kind, &workspace.harnesses);
+        let mut harness = new_harness(id, ws, kind, &workspace.harnesses);
+        if let Some((name, pronouns)) = identity {
+            harness.name = name;
+            harness.pronouns = pronouns;
+        }
         workspace.harnesses.push(harness);
         workspace.expanded = true;
         termden_core::assign_agent_colors(&mut self.workspaces);
@@ -527,29 +575,16 @@ impl TermdenApp {
         self.save();
     }
 
-    /// `/clear` wipes the agent's memory of who it was: back to the default
-    /// name, no tag, no title (it names itself again from its system prompt).
+    /// `/clear` wipes the agent's memory of its role: no tag, no title (it
+    /// sets them again from its system prompt). Name and pronouns are ours.
     pub fn reset_identity(&mut self, id: HarnessId) {
-        let Some(ws) = self.workspaces.iter_mut().find(|w| w.harness(id).is_some()) else {
-            return;
-        };
-        let (kind, siblings): (_, Vec<Harness>) = {
-            let h = ws.harness(id).unwrap();
-            (
-                h.kind,
-                ws.harnesses
-                    .iter()
-                    .filter(|o| o.id != id)
-                    .cloned()
-                    .collect(),
-            )
-        };
-        let fresh = new_harness(id, ws.id, kind, &siblings);
-        if let Some(h) = ws.harness_mut(id) {
-            h.name = fresh.name;
+        if let Some(h) = self
+            .workspaces
+            .iter_mut()
+            .find_map(|workspace| workspace.harness_mut(id))
+        {
             h.tag.clear();
             h.title.clear();
-            h.pronouns.clear();
         }
         self.save();
     }
@@ -639,7 +674,21 @@ impl TermdenApp {
 
 #[cfg(test)]
 mod tests {
-    use super::is_placeholder_name;
+    use super::{NAMES, is_placeholder_name, pick_identity};
+
+    #[test]
+    fn picked_names_are_free_even_when_the_pool_is_used_up() {
+        let mut taken: Vec<String> = Vec::new();
+        for _ in 0..NAMES.len() + 3 {
+            let (name, pronouns) = pick_identity(&taken);
+            assert!(
+                !taken.iter().any(|t| t.eq_ignore_ascii_case(&name)),
+                "{name}"
+            );
+            assert!(pronouns.contains('/'));
+            taken.push(name);
+        }
+    }
 
     #[test]
     fn placeholder_names_are_kind_labels_and_numbers() {

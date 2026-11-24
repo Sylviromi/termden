@@ -263,6 +263,10 @@ assets/config.example.toml  sample config
   has had no terminal traffic for 30 min unloads itself (`unload_idle`; tmux
   keeps the processes). Terminal events redraw at most every 33ms; the 120ms
   tick draws what was held back.
+- New agent harnesses get a unique name and pronouns from a pool at
+  creation (`pick_identity`), not from the agent; the agent only sets its tag
+  and title. `/clear` keeps name and pronouns. The join line is logged on the
+  first sign of work.
 - Closing a tile from the UI needs a second click/press within 3s.
 - Dragging a tile header starts a move after an 8px threshold. Edge zones split;
   centre swaps. `LayoutNode::move_leaf` performs remove-then-split; do not
