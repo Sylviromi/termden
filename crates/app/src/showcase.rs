@@ -81,10 +81,6 @@ impl TermdenApp {
         {
             entry.link = Some(format!("r/{id}/"));
         }
-        crate::state::notify(
-            &from_name,
-            &format!("shared {n} result{}", if n == 1 { "" } else { "s" }),
-        );
         self.showcases.push(Showcase {
             id,
             from,

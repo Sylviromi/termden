@@ -193,8 +193,6 @@ impl TermdenApp {
             Self::watch_updates(cx);
         }
         crate::stats::watch(cx);
-        // Warm the interactive-shell PATH probe before the first agent spawns.
-        std::thread::spawn(|| pty::user_path());
 
         let exe = (mode == Mode::Live)
             .then(|| {
@@ -848,12 +846,6 @@ impl TermdenApp {
         // Names are assigned at creation; the first sign of work is arrival.
         if unannounced {
             self.announce_name(id);
-        }
-        if status == HarnessStatus::NeedsInput
-            && let Some((_, harness)) = self.harness(id)
-            && harness.kind != HarnessKind::Shell
-        {
-            notify(&harness.name, "needs your input");
         }
     }
 
@@ -1517,25 +1509,4 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
     };
     let path = root.join(cwd);
     if path.is_dir() { path } else { home }
-}
-
-/// Desktop notification for things that happen while the window is not in
-/// front; silently nothing where `notify-send` is missing.
-pub fn notify(who: &str, what: &str) {
-    let _ = std::process::Command::new("notify-send")
-        .args([
-            "-a",
-            "termden",
-            "-i",
-            "termden",
-            "-h",
-            "string:desktop-entry:termden",
-            "--",
-            who,
-            what,
-        ])
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn();
 }

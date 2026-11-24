@@ -51,6 +51,9 @@ fn main() {
         return;
     }
 
+    // The interactive-shell PATH probe takes ~100ms; run it while the GPU and
+    // window come up so the first spawn does not wait for it.
+    std::thread::spawn(|| pty::user_path());
     let server_decorations = decorations::server_side_available();
 
     Application::new().run(move |cx: &mut App| {
