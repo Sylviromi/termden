@@ -1,9 +1,9 @@
 use gpui::{
-    AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton, MouseDownEvent,
-    PathPromptOptions, Window, div, prelude::*, px,
+    Animation, AnimationExt, AnyElement, Context, Div, ElementId, FontWeight, Hsla, MouseButton,
+    MouseDownEvent, PathPromptOptions, Stateful, Window, div, ease_out_quint, prelude::*, px,
 };
 use std::time::Instant;
-use termden_core::{Harness, HarnessId, HarnessKind, Workspace};
+use termden_core::{Harness, HarnessId, HarnessKind, Workspace, WorkspaceId};
 
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
@@ -404,6 +404,8 @@ fn workspace_card(
         .on_mouse_down(
             MouseButton::Right,
             cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                this.close_menus();
+                this.menu_closing = None;
                 this.ws_menu = Some((
                     id,
                     (f32::from(event.position.x), f32::from(event.position.y)),
@@ -571,6 +573,20 @@ fn harness_row(
 
     div()
         .id(ElementId::named_usize("harness", id.raw() as usize))
+        .on_mouse_down(
+            MouseButton::Right,
+            cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                cx.stop_propagation();
+                this.close_menus();
+                this.menu_closing = None;
+                this.agent_menu = Some((
+                    id,
+                    (f32::from(event.position.x), f32::from(event.position.y)),
+                ));
+                this.confirm_close = None;
+                cx.notify();
+            }),
+        )
         .flex()
         .items_center()
         .gap(px(7.))
@@ -905,7 +921,11 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
 }
 
 pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
-    let (id, (x, y)) = app.ws_menu?;
+    let (id, (x, y), closing) = match (app.ws_menu, app.menu_closing()) {
+        (Some((id, pos)), _) => (id, pos, false),
+        (None, Some((MenuTarget::Workspace(id), pos))) => (id, pos, true),
+        _ => return None,
+    };
     let workspace = app.workspace(id)?;
     let theme = &app.theme;
     let hover_bg = theme.surface0.opacity(0.5);
@@ -929,8 +949,6 @@ pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<
     let card = div()
         .id("ws-menu")
         .absolute()
-        .left(px(x.min(vw - w - 6.).max(6.)))
-        .top(px(y.min(vh - h - 6.).max(6.)))
         .w(px(w))
         .p(px(4.))
         .flex()
@@ -946,14 +964,14 @@ pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<
             row("menu-add", "Add agent", theme.text).on_click(cx.listener(
                 move |this, _, _, cx| {
                     this.adding = Some(id);
-                    this.ws_menu = None;
+                    this.close_menus();
                     cx.notify();
                 },
             )),
         )
         .children((!workspace.home).then(|| {
             row("menu-unload", "Unload", theme.text).on_click(cx.listener(move |this, _, _, cx| {
-                this.ws_menu = None;
+                this.close_menus();
                 this.unload_workspace(id);
                 cx.notify();
             }))
@@ -972,7 +990,7 @@ pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<
             .when(armed, |r| r.bg(theme.red.opacity(0.18)))
             .on_click(cx.listener(move |this, _, _, cx| {
                 if this.remove_armed(id) {
-                    this.ws_menu = None;
+                    this.close_menus();
                     this.remove_workspace(id);
                 } else {
                     this.confirm_remove = Some((id, Instant::now()));
@@ -980,13 +998,18 @@ pub fn workspace_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<
                 cx.notify();
             }))
         }));
+    let (left, top) = (x.min(vw - w - 6.).max(6.), y.min(vh - h - 6.).max(6.));
+    let card = pop_in(card, left, top, closing);
     let dismiss = |this: &mut TermdenApp,
                    _: &MouseDownEvent,
                    _: &mut Window,
                    cx: &mut Context<TermdenApp>| {
-        this.ws_menu = None;
+        this.close_menus();
         cx.notify();
     };
+    if closing {
+        return Some(card.into_any_element());
+    }
     Some(
         div()
             .id("ws-menu-backdrop")
@@ -1112,5 +1135,125 @@ fn restart_banner(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyE
                     })),
             )
             .into_any_element(),
+    )
+}
+
+pub fn agent_menu(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> Option<AnyElement> {
+    let (id, (x, y), closing) = match (app.agent_menu, app.menu_closing()) {
+        (Some((id, pos)), _) => (id, pos, false),
+        (None, Some((MenuTarget::Agent(id), pos))) => (id, pos, true),
+        _ => return None,
+    };
+    let (workspace, harness) = app.harness(id)?;
+    let theme = &app.theme;
+    let accent = theme.agent(harness.color.unwrap_or(workspace.accent));
+    let (vw, vh) = app.viewport;
+    let (w, h) = (170., 40.);
+    let armed = app.close_armed(id);
+    let close = div()
+        .id("agent-menu-close")
+        .px(px(10.))
+        .h(px(26.))
+        .flex()
+        .items_center()
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(|style| style.bg(theme.red.opacity(0.12)))
+        .when(armed, |r| r.bg(theme.red.opacity(0.18)))
+        .text_size(theme.ui(12.))
+        .text_color(theme.red)
+        .child(if armed {
+            "Click again to close"
+        } else {
+            "Close"
+        })
+        .on_click(cx.listener(move |this, _, _, cx| {
+            if this.close_armed(id) {
+                this.close_menus();
+            }
+            this.request_close(id);
+            cx.notify();
+        }));
+    let card = div()
+        .id("agent-menu")
+        .absolute()
+        .w(px(w))
+        .p(px(4.))
+        .flex()
+        .flex_col()
+        .rounded(px(9.))
+        .bg(theme.mantle)
+        .border_1()
+        .border_color(accent.opacity(0.35))
+        .shadow_lg()
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
+        .child(close);
+    let (left, top) = (x.min(vw - w - 6.).max(6.), y.min(vh - h - 6.).max(6.));
+    let card = pop_in(card, left, top, closing);
+    let dismiss = |this: &mut TermdenApp,
+                   _: &MouseDownEvent,
+                   _: &mut Window,
+                   cx: &mut Context<TermdenApp>| {
+        this.close_menus();
+        cx.notify();
+    };
+    if closing {
+        return Some(card.into_any_element());
+    }
+    Some(
+        div()
+            .id("agent-menu-backdrop")
+            .absolute()
+            .inset_0()
+            .occlude()
+            .on_mouse_down(MouseButton::Left, cx.listener(dismiss))
+            .on_mouse_down(MouseButton::Right, cx.listener(dismiss))
+            .child(card)
+            .into_any_element(),
+    )
+}
+
+#[derive(Clone, Copy)]
+pub enum MenuTarget {
+    Workspace(WorkspaceId),
+    Agent(HarnessId),
+}
+
+const MENU_ANIM: std::time::Duration = std::time::Duration::from_millis(220);
+
+impl TermdenApp {
+    /// Closes whichever context menu is open; its snapshot plays the exit animation.
+    pub fn close_menus(&mut self) {
+        let closed = self
+            .ws_menu
+            .take()
+            .map(|(id, pos)| (MenuTarget::Workspace(id), pos))
+            .or_else(|| {
+                self.agent_menu
+                    .take()
+                    .map(|(id, pos)| (MenuTarget::Agent(id), pos))
+            });
+        if let Some((target, pos)) = closed {
+            self.menu_closing = Some((target, pos, Instant::now()));
+        }
+    }
+
+    fn menu_closing(&self) -> Option<(MenuTarget, (f32, f32))> {
+        self.menu_closing
+            .filter(|(.., at)| at.elapsed() < MENU_ANIM)
+            .map(|(target, pos, _)| (target, pos))
+    }
+}
+
+/// Context menus fade, slide and grow in, and play it backwards on close.
+fn pop_in(card: Stateful<Div>, left: f32, top: f32, closing: bool) -> impl IntoElement {
+    card.with_animation(
+        ("menu-pop", usize::from(closing)),
+        Animation::new(MENU_ANIM).with_easing(ease_out_quint()),
+        move |el, t| {
+            let t = if closing { 1.0 - t } else { t };
+            el.opacity(t).left(px(left)).top(px(top - (1.0 - t) * 16.0))
+        },
     )
 }

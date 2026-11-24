@@ -96,6 +96,8 @@ pub struct TermdenApp {
     pub adding: Option<WorkspaceId>,
     /// Right-click menu: workspace and window position of the click.
     pub ws_menu: Option<(WorkspaceId, (f32, f32))>,
+    pub agent_menu: Option<(HarnessId, (f32, f32))>,
+    pub menu_closing: Option<(crate::panel::MenuTarget, (f32, f32), Instant)>,
     /// Workspace awaiting a second click to confirm removal.
     pub confirm_remove: Option<(WorkspaceId, Instant)>,
     pub unloaded_open: bool,
@@ -225,6 +227,8 @@ impl TermdenApp {
             activity_stick: std::cell::Cell::new(true),
             adding: None,
             ws_menu: None,
+            agent_menu: None,
+            menu_closing: None,
             confirm_remove: None,
             unloaded_open: false,
             confirm_close: None,
@@ -1471,6 +1475,7 @@ impl TermdenApp {
             .children(crate::settings::render(self, window, cx))
             .children(crate::update::render(self, cx))
             .children(crate::panel::workspace_menu(self, cx))
+            .children(crate::panel::agent_menu(self, cx))
             .children(ghost)
             .into_any_element()
     }
