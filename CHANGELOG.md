@@ -5,6 +5,10 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.8.0
+
+- With Rhodon's `rhodon-mcp` installed, claude and opencode agents get a project memory: a `rhodon` tool set pinned to their workspace folder (they cannot name or reach other projects), a `compact` tool to tidy it, and a line in their prompt to use it
+
 ## v0.7.0
 
 - New agents get a unique name and pronouns from termden itself, so it no longer depends on the agent calling a tool; `/clear` keeps them. The `termden_set_name` and `termden_set_pronouns` tools are gone (`termdenctl rename` and `termdenctl pronouns` remain for you)
