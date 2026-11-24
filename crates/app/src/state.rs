@@ -75,6 +75,10 @@ pub struct TermdenApp {
     /// Something visible changed since the last frame (terminal output, a
     /// status); the tick only redraws when this is set or something animates.
     redraw: bool,
+    last_event_draw: Instant,
+    /// Last time each workspace was active or had terminal traffic; idle
+    /// agent-less ones unload (`unload_idle`).
+    pub busy_at: HashMap<WorkspaceId, Instant>,
     /// A title bar is wanted but the desktop draws none (GNOME): show our own
     /// window buttons, and resize edges unless tiled or maximized.
     /// `Some(maximized)`; updated every render.
@@ -216,6 +220,8 @@ impl TermdenApp {
             drop_target: None,
             tick: 0,
             redraw: true,
+            last_event_draw: Instant::now(),
+            busy_at: HashMap::new(),
             own_chrome: None,
             tiled: false,
             server_decorations: true,
@@ -459,7 +465,6 @@ impl TermdenApp {
                         while let Ok(event) = events.recv().await {
                             let alive = this.update(cx, |this, cx| {
                                 this.on_term_event(id, event, cx);
-                                cx.notify();
                             });
                             if alive.is_err() {
                                 break;
@@ -479,8 +484,14 @@ impl TermdenApp {
 
     fn on_term_event(&mut self, id: HarnessId, event: TermEvent, cx: &mut Context<Self>) {
         // Output in a tile that is not on screen changes nothing visible.
+        // Redraws are capped at ~30fps; the tick draws what was held back.
         if !matches!(event, TermEvent::Wakeup) || self.tile_rects.iter().any(|(t, _)| *t == id) {
             self.redraw = true;
+            if self.last_event_draw.elapsed() >= Duration::from_millis(33) {
+                self.last_event_draw = Instant::now();
+                self.redraw = false;
+                cx.notify();
+            }
         }
         let focused = self.focused == Some(id);
         let Some(session) = self.sessions.get_mut(&id) else {
@@ -1306,6 +1317,7 @@ impl TermdenApp {
         self.notify_mail(cx);
         if self.tick % 8 == 0 {
             self.check_rebuilt();
+            self.unload_idle();
         }
         // A full redraw lays out the whole window; skip it when nothing moves.
         let animating = self.mode == Mode::Demo

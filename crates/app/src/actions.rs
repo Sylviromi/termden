@@ -3,7 +3,7 @@
 
 use std::os::unix::process::CommandExt;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use termden_core::{
     AppState, DropZone, Harness, HarnessId, HarnessKind, HarnessStatus, LayoutNode, Workspace,
@@ -426,6 +426,36 @@ impl TermdenApp {
             }
         }
         self.save();
+    }
+
+    /// Unload workspaces with no agent that nobody has touched for a while.
+    pub fn unload_idle(&mut self) {
+        const IDLE: Duration = Duration::from_secs(30 * 60);
+        if self.mode != Mode::Live {
+            return;
+        }
+        let now = Instant::now();
+        let mut stale = Vec::new();
+        for ws in self.workspaces.iter().filter(|w| !w.unloaded) {
+            let busy = ws.id == self.active
+                || ws.harnesses.iter().any(|h| {
+                    self.sessions.get(&h.id).is_some_and(|s| {
+                        s.last_output.elapsed() < IDLE || s.last_input.elapsed() < IDLE
+                    })
+                });
+            let seen = self.busy_at.entry(ws.id).or_insert(now);
+            if busy {
+                *seen = now;
+            } else if !ws.home
+                && now.duration_since(*seen) >= IDLE
+                && ws.harnesses.iter().all(|h| h.kind == HarnessKind::Shell)
+            {
+                stale.push(ws.id);
+            }
+        }
+        for id in stale {
+            self.unload_workspace(id);
+        }
     }
 
     pub fn remove_workspace(&mut self, ws: WorkspaceId) {

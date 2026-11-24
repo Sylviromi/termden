@@ -259,6 +259,10 @@ assets/config.example.toml  sample config
   mouse; `layout_tiles` ignores zoom (focus movement, new splits). Split
   dividers come from the same `canvas::walk`.
 - Agents get no control command that moves, resizes or zooms tiles.
+- A loaded workspace that is not active, not Home, holds only shells and
+  has had no terminal traffic for 30 min unloads itself (`unload_idle`; tmux
+  keeps the processes). Terminal events redraw at most every 33ms; the 120ms
+  tick draws what was held back.
 - Closing a tile from the UI needs a second click/press within 3s.
 - Dragging a tile header starts a move after an 8px threshold. Edge zones split;
   centre swaps. `LayoutNode::move_leaf` performs remove-then-split; do not
