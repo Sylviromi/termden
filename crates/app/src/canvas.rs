@@ -29,16 +29,15 @@ impl TRect {
     }
 }
 
-/// Where the tiling canvas sits inside the window. `inset` is room reserved on
-/// the right, e.g. the stats pane plus its gap.
-pub fn canvas_rect(config: &Config, viewport: Size<Pixels>, inset: f32) -> TRect {
+/// Where the tiling canvas sits inside the window.
+pub fn canvas_rect(config: &Config, viewport: Size<Pixels>) -> TRect {
     let gap = config.gap;
     let x = if config.sidebar == Sidebar::Pinned {
         gap + config.panel_width + gap
     } else {
         gap
     };
-    let width = f32::from(viewport.width) - x - gap - inset;
+    let width = f32::from(viewport.width) - x - gap;
     let height = f32::from(viewport.height) - gap * 2.0;
 
     TRect {

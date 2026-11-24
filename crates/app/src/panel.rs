@@ -3,7 +3,7 @@ use gpui::{
     PathPromptOptions, Window, div, prelude::*, px,
 };
 use std::time::Instant;
-use termden_core::{Harness, HarnessKind, Workspace};
+use termden_core::{Harness, HarnessId, HarnessKind, Workspace};
 
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
@@ -875,7 +875,7 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                     .child(label),
             )
     };
-    let activity_open = app.activity_on();
+    let activity_open = app.screen_on(HarnessId::ACTIVITY);
 
     div()
         .flex()
@@ -887,17 +887,19 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         .border_t_1()
         .border_color(theme.text.opacity(0.05))
         .child(
-            pill("activity-toggle", "ACTIVITY", icons::HISTORY, activity_open)
-                .on_click(cx.listener(|this, _, _, cx| this.toggle_activity(cx))),
+            pill("activity-toggle", "ACTIVITY", icons::HISTORY, activity_open).on_click(
+                cx.listener(|this, _, _, cx| this.toggle_screen(HarnessId::ACTIVITY, cx)),
+            ),
         )
         .child(div().w(px(1.)).h(px(14.)).bg(theme.text.opacity(0.12)))
         .child(
-            pill("stats-toggle", "STATS", icons::STATS, app.stats_open).on_click(cx.listener(
-                |this, _, _, cx| {
-                    let open = !this.stats_open;
-                    this.set_stats_open(open, cx);
-                },
-            )),
+            pill(
+                "stats-toggle",
+                "STATS",
+                icons::STATS,
+                app.screen_on(HarnessId::STATS),
+            )
+            .on_click(cx.listener(|this, _, _, cx| this.toggle_screen(HarnessId::STATS, cx))),
         )
         .into_any_element()
 }

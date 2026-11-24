@@ -96,8 +96,6 @@ pub struct Config {
     pub gap: f32,
     pub corner_radius: f32,
     pub title_bar: TitleBar,
-    /// The workspace stats pane on the right; remembered between runs.
-    pub stats_open: bool,
     pub sidebar: Sidebar,
 }
 
@@ -112,7 +110,6 @@ impl Default for Config {
             gap: 12.0,
             corner_radius: 12.0,
             title_bar: TitleBar::Auto,
-            stats_open: false,
             sidebar: Sidebar::Pinned,
         }
     }

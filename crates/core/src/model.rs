@@ -24,8 +24,13 @@ id_type!(WorkspaceId);
 id_type!(HarnessId);
 
 impl HarnessId {
-    /// Layout leaf of the activity screen; never a real harness.
+    /// Layout leaves of the activity and stats screens; never real harnesses.
     pub const ACTIVITY: Self = Self(u32::MAX);
+    pub const STATS: Self = Self(u32::MAX - 1);
+
+    pub fn is_screen(self) -> bool {
+        self == Self::ACTIVITY || self == Self::STATS
+    }
 }
 id_type!(SubagentId);
 

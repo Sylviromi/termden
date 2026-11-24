@@ -2,17 +2,13 @@
 //! with the fleet's feed. Messages fold into openable bubbles; shared results
 //! carry a link to their page.
 
-use gpui::{
-    AnyElement, Context, ElementId, FontWeight, MouseButton, MouseDownEvent, div, prelude::*, px,
-};
+use gpui::{AnyElement, Context, ElementId, FontWeight, div, prelude::*, px};
 use termden_core::{Activity, HarnessId};
 
 use crate::canvas::TRect;
 use crate::panel::entry_color;
 use crate::state::TermdenApp;
-use crate::widgets::{ICON_FONT, icon_button, icons};
-
-const HEADER: f32 = 32.0;
+use crate::widgets::icons;
 
 /// Messages, shared results and arrivals/departures; app and workspace
 /// notices and status chatter stay out of the chat.
@@ -35,105 +31,6 @@ fn open_link(path: &str) {
 
 pub fn render(app: &TermdenApp, rect: TRect, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
-    let id = HarnessId::ACTIVITY;
-    let focused = app.focused == Some(id);
-    let accent = theme.accent(0);
-    let dragging = app
-        .drag
-        .is_some_and(|drag| drag.active && drag.harness == id);
-    let drop_zone = app
-        .drop_target
-        .filter(|(target, _)| *target == id)
-        .map(|(_, zone)| zone);
-    let zoomed = app.zoomed == Some(id);
-
-    let mut tile = div()
-        .id("activity-tile")
-        .absolute()
-        .left(px(rect.x))
-        .top(px(rect.y))
-        .w(px(rect.w))
-        .h(px(rect.h))
-        .rounded(px(10.))
-        .bg(theme.base)
-        .border_2()
-        .border_color(if focused {
-            accent
-        } else {
-            theme.text.opacity(0.06)
-        })
-        .overflow_hidden()
-        .flex()
-        .flex_col()
-        .on_mouse_down(
-            MouseButton::Left,
-            cx.listener(|this, _, window, cx| {
-                window.focus(&this.focus);
-                this.focus_harness(HarnessId::ACTIVITY);
-                cx.notify();
-            }),
-        );
-    if focused {
-        tile = tile.shadow_lg();
-    }
-    if dragging {
-        tile = tile.opacity(0.55);
-    }
-
-    let header = div()
-        .id("activity-header")
-        .flex()
-        .flex_shrink_0()
-        .items_center()
-        .gap(px(7.))
-        .h(px(HEADER))
-        .px(px(9.))
-        .bg(theme.surface0.opacity(0.26))
-        .border_b_1()
-        .border_color(theme.text.opacity(0.05))
-        .on_mouse_down(
-            MouseButton::Left,
-            cx.listener(|this, event: &MouseDownEvent, _, cx| {
-                if event.click_count == 2 {
-                    this.focus_harness(HarnessId::ACTIVITY);
-                    this.toggle_zoom();
-                    cx.notify();
-                } else {
-                    this.begin_drag(HarnessId::ACTIVITY, event.position);
-                }
-            }),
-        )
-        .child(
-            div()
-                .font_family(ICON_FONT)
-                .text_size(theme.ui(14.))
-                .text_color(accent)
-                .child(icons::HISTORY),
-        )
-        .child(
-            div()
-                .min_w(px(0.))
-                .truncate()
-                .text_size(theme.ui(12.))
-                .font_weight(FontWeight::MEDIUM)
-                .text_color(theme.text)
-                .child("Activity"),
-        )
-        .child(div().flex_1().min_w(px(0.)))
-        .children(zoomed.then(|| {
-            icon_button("activity-unzoom", icons::FULLSCREEN_EXIT, theme)
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.zoomed = None;
-                    cx.notify();
-                }))
-        }))
-        .child(
-            icon_button("activity-close", icons::CLOSE, theme)
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(cx.listener(|this, _, _, cx| this.toggle_activity(cx))),
-        );
-
     let feed = div()
         .id("activity-feed")
         .track_scroll(&app.activity_scroll)
@@ -158,10 +55,15 @@ pub fn render(app: &TermdenApp, rect: TRect, cx: &mut Context<TermdenApp>) -> An
                 .map(|(i, entry)| entry_row(app, i, entry, cx)),
         );
 
-    tile.child(header)
-        .child(feed)
-        .children(drop_zone.map(|zone| crate::tile::drop_overlay(zone, rect, accent, theme)))
-        .into_any_element()
+    crate::tile::screen_frame(
+        app,
+        HarnessId::ACTIVITY,
+        rect,
+        "Activity",
+        icons::HISTORY,
+        feed.into_any_element(),
+        cx,
+    )
 }
 
 fn entry_row(

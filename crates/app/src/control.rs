@@ -164,19 +164,20 @@ impl TermdenApp {
             "state" => self.state_json().to_string(),
             "stats" => match arg {
                 Some("on") => {
-                    self.set_stats_open(true, cx);
+                    self.set_screen(HarnessId::STATS, true);
+                    cx.notify();
                     "ok".into()
                 }
                 Some("off") => {
-                    self.set_stats_open(false, cx);
+                    self.set_screen(HarnessId::STATS, false);
+                    cx.notify();
                     "ok".into()
                 }
                 _ => self.stats_json().to_string(),
             },
             "activity" => {
-                if self.activity_on() != (arg != Some("off")) {
-                    self.toggle_activity(cx);
-                }
+                self.set_screen(HarnessId::ACTIVITY, arg != Some("off"));
+                cx.notify();
                 "ok".into()
             }
             // `shell|agent <tab> name <tab> tag`, for the git commit hook.
@@ -503,7 +504,7 @@ impl TermdenApp {
             .collect();
         json!({
             "mode": format!("{:?}", self.mode).to_lowercase(),
-            "open": self.stats_open,
+            "open": self.screen_on(HarnessId::STATS),
             "active": self.active,
             "sampled_s": self.stats.at.map(|at| at.elapsed().as_secs()),
             "plans": self.stats.plans.iter().map(|plan| json!({

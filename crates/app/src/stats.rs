@@ -16,7 +16,7 @@ use termden_core::{Harness, HarnessId, HarnessKind, Workspace, WorkspaceId};
 
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
-use crate::widgets::{dot, hspacer, icon_button, icons, kind_badge};
+use crate::widgets::{dot, icons, kind_badge};
 
 const REFRESH: Duration = Duration::from_secs(5);
 
@@ -444,7 +444,11 @@ pub fn width(viewport_width: f32) -> f32 {
 /// Plan limits on top (per account), then the active workspace: its total,
 /// where the tokens went, and one row per agent. Shells use no tokens and are
 /// not listed.
-pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+pub fn render(
+    app: &TermdenApp,
+    rect: crate::canvas::TRect,
+    cx: &mut Context<TermdenApp>,
+) -> AnyElement {
     let theme = &app.theme;
     let workspace = app.workspace(app.active);
     let stats = workspace.and_then(|workspace| app.stats.workspaces.get(&workspace.id));
@@ -458,35 +462,11 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
         })
         .unwrap_or_default();
 
-    div()
-        .id("stats-pane")
-        .flex_shrink_0()
-        .w(px(width(app.viewport.0)))
-        .h_full()
+    let content = div()
+        .flex_1()
+        .min_h(px(0.))
         .flex()
         .flex_col()
-        .rounded(px(app.config.corner_radius))
-        .bg(theme.mantle)
-        .border_1()
-        .border_color(theme.text.opacity(0.06))
-        .overflow_hidden()
-        .child(
-            div()
-                .flex_shrink_0()
-                .h(px(40.))
-                .pl(px(16.))
-                .pr(px(10.))
-                .flex()
-                .items_center()
-                .border_b_1()
-                .border_color(theme.text.opacity(0.06))
-                .child(label("USAGE", theme))
-                .child(hspacer())
-                .child(
-                    icon_button("stats-close", icons::CLOSE, theme)
-                        .on_click(cx.listener(|this, _, _, cx| this.set_stats_open(false, cx))),
-                ),
-        )
         // One scroll for everything but the header and MCP: short windows
         // must still reach the agents.
         .child(
@@ -517,7 +497,16 @@ pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                 ),
         )
         .child(mcp(stats.map_or(&[][..], |stats| &stats.mcp), theme))
-        .into_any_element()
+        .into_any_element();
+    crate::tile::screen_frame(
+        app,
+        termden_core::HarnessId::STATS,
+        rect,
+        "Usage",
+        icons::STATS,
+        content,
+        cx,
+    )
 }
 
 fn label(text: &'static str, theme: &Theme) -> Div {

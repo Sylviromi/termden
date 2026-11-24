@@ -100,7 +100,7 @@ crates/app/                package `termden`: GPUI binary `termden` + `termdenct
   actions.rs               workspace/harness CRUD, persistence, hot reload
   control.rs               control socket (`termdenctl` commands; `HELP`)
   stats.rs                 per-workspace token/MCP/uptime cache (background)
-                           and the right-hand stats pane
+                           and the stats screen
   theme.rs                 Catppuccin Mocha + Everforest palettes/fonts
   mock.rs                  the demo fleet (3 workspaces, 8 harnesses)
   panel.rs                 workspace tree, tips, footer
@@ -134,9 +134,8 @@ assets/config.example.toml  sample config
 ### Geometry
 
 - Panel width, gap and radii come from `Config` (defaults 268 / 12 / 12).
-- `canvas::canvas_rect(config, viewport, inset)` is the single source of truth
-  for where the tiled area starts. `inset` is room reserved on the right (the
-  stats pane plus its gap, see `TermdenApp::canvas_rect`); rendering, focus,
+- `canvas::canvas_rect(config, viewport)` is the single source of truth
+  for where the tiled area starts (see `TermdenApp::canvas_rect`); rendering, focus,
   hit-testing and `visible_tiles` all go through it. Tiles are positioned
   absolutely in that space; `canvas::layout_rects` recursively splits it using
   `LayoutNode`.
@@ -192,15 +191,15 @@ assets/config.example.toml  sample config
 
 ### Stats
 
-- The right-hand stats pane (`app/src/stats.rs`) shows plan limits on top
+- The stats screen (`app/src/stats.rs`), a canvas tile like the activity one
+  (layout leaf `HarnessId::STATS`, per workspace, opens at `stats::width`), shows plan limits on top
   (per provider account, so the same in every workspace), then the **active**
   workspace: total tokens with a cached/in/out split, one row per agent
   (tokens, context fill, uptime) and the MCP servers enabled for its tiles.
   Shells are not agents: they are left out of the pane, `termdenctl stats`
   and the activity feed (`log_harness` drops them). Everything but the header
   and the MCP block scrolls, so short windows still reach the agents. The
-  sidebar footer's STATS button toggles it; the choice lives in
-  `Config::stats_open`. Collection covers every workspace, so switching costs
+  sidebar footer's STATS button toggles it. Collection covers every workspace, so switching costs
   no wait.
 - Plan limits are read, never guessed. Claude: the status line input
   (`rate_limits.five_hour` / `seven_day`, plus `context_window`), saved by
@@ -246,8 +245,8 @@ assets/config.example.toml  sample config
 - `termdenctl stats` returns the same data as JSON (`plans`, per-agent
   `context_percent`); `stats on|off` toggles the pane. Keep the JSON and the
   pane in sync.
-- The pane reserves `stats::width(viewport) + gap` (260–360px) on the right through
-  `TermdenApp::canvas_rect`; tiles are re-flowed, not covered.
+- Both screens share `tile::screen_frame` (drag, zoom, close); the layout code
+  must treat `HarnessId::is_screen()` leaves as non-harnesses.
 
 ### State and interaction
 

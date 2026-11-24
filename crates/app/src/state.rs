@@ -145,7 +145,6 @@ pub struct TermdenApp {
     /// background executor.
     pub stats: crate::stats::StatsCache,
     /// Whether the stats pane is showing (persisted in the config).
-    pub stats_open: bool,
     pub stats_scroll: ScrollHandle,
     scroll_lines: f32,
     /// Our own binary and its mtime at startup, for reload-on-rebuild.
@@ -200,7 +199,6 @@ impl TermdenApp {
 
         let mut workspaces = state.workspaces;
         termden_core::assign_agent_colors(&mut workspaces);
-        let stats_open = config.stats_open || mode == Mode::Demo;
         let mut app = Self {
             mode,
             config,
@@ -252,13 +250,13 @@ impl TermdenApp {
             update: None,
             update_open: false,
             stats: Default::default(),
-            stats_open,
             stats_scroll: ScrollHandle::new(),
             scroll_lines: 0.0,
             exe,
             started: Instant::now(),
         };
         if mode == Mode::Demo {
+            app.set_screen(HarnessId::STATS, true);
             mock::seed_activity(&mut app);
         } else {
             let verb = if std::env::var_os("TERMDEN_RELOADED").is_some() {
@@ -290,15 +288,9 @@ impl TermdenApp {
         gpui::size(px(self.viewport.0), px(self.viewport.1))
     }
 
-    /// Where the tiling canvas sits in this window, excluding the panel and the
-    /// stats pane when it is open.
+    /// Where the tiling canvas sits in this window, excluding the panel.
     pub fn canvas_rect(&self) -> TRect {
-        let inset = if self.stats_open {
-            self.config.gap + crate::stats::width(self.viewport.0)
-        } else {
-            0.0
-        };
-        canvas::canvas_rect(&self.config, self.viewport_size(), inset)
+        canvas::canvas_rect(&self.config, self.viewport_size())
     }
 
     /// Every tile of a workspace laid out on the canvas, ignoring zoom.
@@ -850,25 +842,33 @@ impl TermdenApp {
             .find_map(|workspace| workspace.harness(id).map(|harness| (workspace, harness)))
     }
 
-    pub fn activity_on(&self) -> bool {
+    pub fn screen_on(&self, screen: HarnessId) -> bool {
         self.layouts
             .get(&self.active)
-            .is_some_and(|l| l.contains(HarnessId::ACTIVITY))
+            .is_some_and(|l| l.contains(screen))
     }
 
-    /// Open the activity feed as a tile beside the focused one, or close it.
-    pub fn toggle_activity(&mut self, cx: &mut Context<Self>) {
+    /// Open the activity or stats screen beside the focused tile, or close it.
+    pub fn toggle_screen(&mut self, screen: HarnessId, cx: &mut Context<Self>) {
+        self.set_screen(screen, !self.screen_on(screen));
+        cx.notify();
+    }
+
+    pub fn set_screen(&mut self, screen: HarnessId, open: bool) {
         let active = self.active;
-        if self.activity_on() {
+        if self.screen_on(screen) == open {
+            return;
+        }
+        if !open {
             if let Some(layout) = self.layouts.get_mut(&active)
-                && !layout.remove(HarnessId::ACTIVITY)
+                && !layout.remove(screen)
             {
                 self.layouts.remove(&active);
             }
-            if self.focused == Some(HarnessId::ACTIVITY) {
+            if self.focused == Some(screen) {
                 self.focused = self.layouts.get(&active).and_then(|l| l.first_leaf());
             }
-            self.zoomed = self.zoomed.filter(|id| *id != HarnessId::ACTIVITY);
+            self.zoomed = self.zoomed.filter(|id| *id != screen);
         } else {
             self.activity_stick.set(true);
             let tiles = self.layout_tiles(active);
@@ -880,39 +880,21 @@ impl TermdenApp {
                         .filter(|f| layout.contains(*f))
                         .or_else(|| layout.first_leaf());
                     if let Some(target) = target {
-                        layout.split_at(target, HarnessId::ACTIVITY, termden_core::DropZone::Right);
+                        layout.split_at(target, screen, termden_core::DropZone::Right);
                         let width = tiles
                             .iter()
                             .find(|(id, _)| *id == target)
-                            .map_or(wanted * 2.0, |(_, rect)| rect.w);
-                        layout.set_share(HarnessId::ACTIVITY, wanted / width);
+                            .map_or(1.0, |(_, rect)| rect.w);
+                        layout.set_share(screen, (wanted / width).min(0.5));
                     }
                 }
                 None => {
-                    self.layouts
-                        .insert(active, LayoutNode::leaf(HarnessId::ACTIVITY));
+                    self.layouts.insert(active, LayoutNode::leaf(screen));
                 }
             }
-            self.focused = Some(HarnessId::ACTIVITY);
+            self.focused = Some(screen);
         }
         self.save();
-        cx.notify();
-    }
-
-    pub fn set_stats_open(&mut self, open: bool, cx: &mut Context<Self>) {
-        if self.stats_open == open {
-            return;
-        }
-        self.stats_open = open;
-        self.config.stats_open = open;
-        // Demo and mirror instances borrow the real config; only the real app
-        // owns it.
-        if self.mode == Mode::Live
-            && let Err(error) = self.config.save()
-        {
-            eprintln!("termden: could not save config: {error}");
-        }
-        cx.notify();
     }
 
     pub fn activate_workspace(&mut self, id: WorkspaceId) {
@@ -941,7 +923,7 @@ impl TermdenApp {
     }
 
     pub fn focus_harness(&mut self, id: HarnessId) {
-        if id == HarnessId::ACTIVITY {
+        if id.is_screen() {
             self.focused = Some(id);
             return;
         }
@@ -1453,8 +1435,7 @@ impl TermdenApp {
                     .flex_row()
                     .gap(px(gap))
                     .children(panel)
-                    .child(canvas)
-                    .children(self.stats_open.then(|| crate::stats::render(self, cx))),
+                    .child(canvas),
             )
             .children(floating.map(|panel| {
                 div()
