@@ -206,7 +206,8 @@ Claude Code and opencode tiles started by termden get a `termden` MCP server
 - `termden_agents`, `termden_read_screen`: see the other tiles.
 - `termden_send_mail`, `termden_read_mail`: mailboxes. An idle agent gets a
   one-line `📬 sender: preview…` typed into its prompt, never over your draft.
-- `termden_set_name|tag|pronouns|title`: identity shown in the sidebar.
+- `termden_set_tag|title`: role and current work shown in the sidebar (names and
+  pronouns are assigned by termden).
 - `termden_show_results`: shows you what an agent made or captured (images,
   screenshots, videos, audio, PDFs, files) as a gallery on a local
   server, view only. The link `…/r/` is stable: it always shows the newest set and reloads

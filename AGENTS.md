@@ -58,7 +58,7 @@ You are probably running in a termden tile. Then `termdenctl` is on `PATH`,
 The repo uses `scripts/git-hooks` (`git config core.hooksPath scripts/git-hooks`,
 set per repo, never global). Commits made from an agent tile are **refused**
 until the agent has its own name (not "Claude 2", "opencode 2"...) and a tag
-(`termden_set_name`, `termden_set_tag`). The `commit-msg` hook then appends
+(a name is assigned at creation; the agent calls `termden_set_tag`). The `commit-msg` hook then appends
 `> Written by <name> [<tag>].` as the last line, so write clean
 `type(scope): summary` subjects and never add your own sign-off or
 `Co-Authored-By`. Humans and plain shell tiles commit as usual. Commit only your
@@ -264,8 +264,8 @@ assets/config.example.toml  sample config
   keeps the processes). Terminal events redraw at most every 33ms; the 120ms
   tick draws what was held back.
 - New agent harnesses get a unique name and pronouns from a pool at
-  creation (`pick_identity`), not from the agent; the agent only sets its tag
-  and title. `/clear` keeps name and pronouns. The join line is logged on the
+  creation (`pick_identity`); the agent only sets its tag and title (no MCP
+  tools for name or pronouns; `termdenctl rename|pronouns` stay for the user). `/clear` keeps name and pronouns. The join line is logged on the
   first sign of work.
 - Closing a tile from the UI needs a second click/press within 3s.
 - Dragging a tile header starts a move after an 8px threshold. Edge zones split;
@@ -363,7 +363,7 @@ To add one: put its Ghostty theme file name, id and display name in
    sessions; subagent tree and unread counts.
 3. **Control plane** — socket, `termdenctl`, MCP, hybrid mailbox: done for
    claude/opencode tiles started by termden (mail persisted in state.json;
-   MCP tools `termden_agents|send_mail|read_mail|read_screen|set_name|set_tag|set_pronouns|set_title|show_results`; tiles already
+   MCP tools `termden_agents|send_mail|read_mail|read_screen|set_tag|set_title|show_results`; tiles already
    running keep their old config until restarted). Next: move the socket to
    `termdend`, JSON-RPC, SO_PEERCRED.
 4. **Polish** — command palette, persistence, optional translucent/blurred

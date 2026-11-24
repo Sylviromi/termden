@@ -18,8 +18,8 @@ fn prompt(id: HarnessId, name: &str, home: bool) -> String {
          mcp__termden__<tool>; if they are deferred, load them with ToolSearch first, and never \
          conclude they do not exist without trying): termden_agents lists agents, \
          termden_send_mail messages one, termden_read_mail reads your inbox, termden_read_screen \
-         shows what another agent is doing, termden_set_name / termden_set_tag / termden_set_pronouns / termden_set_title \
-         name you and describe your role and current work. Your name and pronouns were already assigned (your name is above; do not change them unless the user asks). Before anything else, even if your very first message is a task and even if it seems unrelated, call termden_set_tag with a one-word role (frontend, backend, debugger...). Keep termden_set_title current with a short line about \
+         shows what another agent is doing, termden_set_tag / termden_set_title \
+         describe your role and current work. Your name and pronouns are assigned by termden (your name is above). Before anything else, even if your very first message is a task and even if it seems unrelated, call termden_set_tag with a one-word role (frontend, backend, debugger...). Keep termden_set_title current with a short line about \
          what you are doing. To ask the user to choose between options, use your own question tool in the terminal; when the options are images or files, first call termden_show_results with captions that match the option labels (like A and B), post its link, then ask. When you produce images, screenshots, renders, videos or other \
          files the user should look at, call termden_show_results with their absolute paths and post \
          the link it returns. When a line starts with 📬 (a mail preview from termden), call \

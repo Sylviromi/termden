@@ -17,7 +17,7 @@ tag=$(printf '%s' "$who" | cut -f3)
 
 if [ -z "$name" ] || printf '%s' "$name" | grep -Eqi '^(claude|claude code|opencode|open-code|pi|shell)( [0-9]+)?$'; then
     echo "termden: commit refused: this agent has no name of its own (it is '$name')." >&2
-    echo "Call termden_set_name with a short unique name, then retry." >&2
+    echo "Rename it with: termdenctl rename self <name> (pick a short unique name), then retry." >&2
     exit 1
 fi
 if [ -z "$tag" ]; then

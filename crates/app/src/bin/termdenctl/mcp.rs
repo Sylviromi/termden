@@ -26,13 +26,6 @@ fn tools() -> Value {
             }},
         },
         {
-            "name": "termden_set_name",
-            "description": "Give yourself a short unique name (e.g. ada, nova) shown in the sidebar and in mail. Do it once at the start; keep it unless the user asks you to change it.",
-            "inputSchema": { "type": "object", "required": ["name"], "properties": {
-                "name": text("one short word"),
-            }},
-        },
-        {
             "name": "termden_show_results",
             "description": "Show the user what you made or captured (images, screenshots, renders, videos, audio, PDFs, other files) as a gallery on a local web page. View only: nothing comes back. Returns the page URL immediately; post it in your reply with that exact link on its own line (the user Ctrl+clicks it). The link is stable: it always shows your newest set and updates by itself, so call again to update and reuse the same link; older sets move to History. Use it whenever you produce several visual results or any file the user should look at. Give ABSOLUTE paths to existing files; 1-50 items.",
             "inputSchema": { "type": "object", "required": ["title", "items"], "properties": {
@@ -58,13 +51,6 @@ fn tools() -> Value {
             "description": "Set your own short role tag (e.g. frontend, backend, debugger) so other agents know what you do. Shown in the sidebar and in termden_agents and mail.",
             "inputSchema": { "type": "object", "required": ["tag"], "properties": {
                 "tag": text("one short word, max 12 chars; empty clears"),
-            }},
-        },
-        {
-            "name": "termden_set_pronouns",
-            "description": "Choose your own pronouns (e.g. she/her, he/him, they/them, it/its) so the user and other agents can refer to you correctly. Shown next to your name.",
-            "inputSchema": { "type": "object", "required": ["pronouns"], "properties": {
-                "pronouns": text("e.g. they/them, max 16 chars; empty clears"),
             }},
         },
         {
@@ -111,10 +97,6 @@ fn call(name: &str, args: &Value) -> Result<String, String> {
             mail_send(&me, &arg("to")?, &arg("text")?)?;
             Ok("delivered".into())
         }
-        "termden_set_name" => {
-            request(&format!("rename {me} {}", arg("name")?.replace('\n', " ")))?;
-            Ok("name set".into())
-        }
         "termden_show_results" => {
             let body = json!({
                 "from": me, "title": args["title"], "description": args["description"],
@@ -132,13 +114,6 @@ fn call(name: &str, args: &Value) -> Result<String, String> {
         "termden_set_tag" => {
             request(&format!("tag {me} {}", arg("tag")?.replace('\n', " ")))?;
             Ok("tag set".into())
-        }
-        "termden_set_pronouns" => {
-            request(&format!(
-                "pronouns {me} {}",
-                arg("pronouns")?.replace('\n', " ")
-            ))?;
-            Ok("pronouns set".into())
         }
         "termden_read_mail" => {
             let mail = mail_read(&me)?;
