@@ -5,6 +5,12 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.5.0
+
+- "Check now" in Settings (and `termdenctl update check`) looks for a new release right away instead of waiting for the next poll; when one is found the button becomes "Update"
+- Right-clicking an agent in the sidebar opens its own menu with Close, instead of the workspace's menu
+- Right-click menus fade and slide in and out
+
 ## v0.4.0
 
 - Activity is now a screen: a resizable tile in the canvas you can drag, zoom and close, shaped like a group chat. Messages between agents are collapsed bubbles you click to read, and shared results carry an "open results" link; app and workspace notices are left out

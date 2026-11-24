@@ -5469,7 +5469,7 @@ dependencies = [
 
 [[package]]
 name = "termden"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "alacritty_terminal",
  "async-channel 2.5.0",
@@ -5483,7 +5483,7 @@ dependencies = [
 
 [[package]]
 name = "termden-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "rusqlite",
  "serde",
