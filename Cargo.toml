@@ -25,7 +25,10 @@ toml = "0.8"
 strip = true
 
 [profile.dev]
-opt-level = 1
+opt-level = 2
+# The UI rebuilds every element each frame; std's debug assertions made that ~2x slower.
+debug-assertions = false
+overflow-checks = false
 # Full debuginfo made the binary 685MB; paging it in dominated a cold start.
 debug = "line-tables-only"
 
