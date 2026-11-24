@@ -52,6 +52,9 @@ pub struct AgentStats {
     pub usage: Option<Usage>,
     /// How full the context window is, from Claude's status line.
     pub context_percent: Option<f64>,
+    /// opencode: context tokens a reply must re-read uncached because the
+    /// prompt cache has expired (`/new` would avoid that).
+    pub cache_cold: Option<u64>,
     pub mcp: Vec<String>,
     pub started: Option<u64>,
     /// Whether termden knows the harness's provider sessions. Claude tiles
@@ -105,14 +108,15 @@ pub fn watch(cx: &mut Context<TermdenApp>) {
         let logs: Arc<Mutex<HashMap<String, ClaudeLog>>> = Arc::default();
         // opencode Go limits cost a process start; ask once a minute.
         let go: Arc<Mutex<GoCache>> = Arc::default();
+        let oc: Arc<Mutex<OpenCodeCache>> = Arc::default();
         loop {
             let Ok(request) = this.update(cx, |this, _| this.stats_request()) else {
                 break;
             };
-            let (logs, go) = (logs.clone(), go.clone());
+            let (logs, go, oc) = (logs.clone(), go.clone(), oc.clone());
             let collected = cx
                 .background_executor()
-                .spawn(async move { collect(request, &logs, &go) })
+                .spawn(async move { collect(request, &logs, &go, &oc) })
                 .await;
             let alive = this.update(cx, |this, cx| {
                 this.stats.at = Some(Instant::now());
@@ -180,12 +184,24 @@ type Collected = (HashMap<WorkspaceId, WorkspaceStats>, Vec<Plan>);
 /// When opencode Go limits were last asked for, and the answer.
 type GoCache = (Option<Instant>, Option<Vec<Limit>>);
 
+/// Last good opencode answers. opencode's database is busy while it writes
+/// and `opencode api` can time out; a failed read must not blank the pane.
+#[derive(Default)]
+struct OpenCodeCache {
+    sessions: HashMap<HarnessId, Vec<String>>,
+    usage: HashMap<String, stats::Usage>,
+}
+
+/// Cold warning only when the context is big enough to be worth clearing.
+const COLD_MIN_TOKENS: u64 = 20_000;
+
 const GO_REFRESH: Duration = Duration::from_secs(60);
 
 fn collect(
     request: Request,
     logs: &Mutex<HashMap<String, ClaudeLog>>,
     go: &Mutex<GoCache>,
+    oc: &Mutex<OpenCodeCache>,
 ) -> Collected {
     if request.demo {
         return demo(&request);
@@ -207,9 +223,28 @@ fn collect(
             // so clearing a conversation does not erase what it cost.
             let sessions = match agent.kind {
                 HarnessKind::ClaudeCode => stats::claude_sessions(agent.id),
-                HarnessKind::OpenCode => stats::opencode_sessions(agent.id, since_ms),
+                HarnessKind::OpenCode => {
+                    let mut oc = oc.lock().unwrap_or_else(|error| error.into_inner());
+                    let found = stats::opencode_sessions(agent.id, since_ms);
+                    // Sessions only accumulate, so an empty or shorter answer
+                    // is a failed read, not a forgotten session.
+                    let known = oc.sessions.entry(agent.id).or_default();
+                    if found.len() >= known.len() {
+                        *known = found;
+                    }
+                    known.clone()
+                }
                 _ => Vec::new(),
             };
+            let cache_cold = (agent.kind == HarnessKind::OpenCode)
+                .then(|| sessions.last())
+                .flatten()
+                .and_then(|session| stats::opencode_last_reply(session))
+                .filter(|&(done, context)| {
+                    context >= COLD_MIN_TOKENS
+                        && now_ms().saturating_sub(done) >= stats::OPENCODE_CACHE_TTL_MS
+                })
+                .map(|(_, context)| context);
             let tracked = match agent.kind {
                 HarnessKind::ClaudeCode => !sessions.is_empty(),
                 HarnessKind::OpenCode => true,
@@ -227,7 +262,16 @@ fn collect(
                         log.refresh();
                         log.found().then(|| log.usage())
                     }
-                    _ => stats::opencode_usage(session),
+                    _ => {
+                        let mut oc = oc.lock().unwrap_or_else(|error| error.into_inner());
+                        match stats::opencode_usage(session) {
+                            Some(usage) => {
+                                oc.usage.insert(session.clone(), usage);
+                                Some(usage)
+                            }
+                            None => oc.usage.get(session).copied(),
+                        }
+                    }
                 })
                 .reduce(|mut sum, usage| {
                     sum.add(usage);
@@ -256,6 +300,7 @@ fn collect(
                 id: agent.id,
                 usage,
                 context_percent: status.and_then(|status| status.context_percent),
+                cache_cold,
                 mcp: agent_mcp,
                 started: start,
                 tracked,
@@ -291,7 +336,8 @@ fn collect(
     if opencode {
         let mut go = go.lock().unwrap_or_else(|error| error.into_inner());
         if go.0.is_none_or(|at| at.elapsed() >= GO_REFRESH) {
-            *go = (Some(Instant::now()), stats::opencode_go_limits());
+            let fresh = stats::opencode_go_limits();
+            *go = (Some(Instant::now()), fresh.or_else(|| go.1.take()));
         }
         if let Some(limits) = go.1.clone() {
             plans.push(Plan {
@@ -301,6 +347,12 @@ fn collect(
         }
     }
     (out, plans)
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |now| now.as_millis() as u64)
 }
 
 /// The demo fleet has no real sessions or transcripts; these keep every state
@@ -393,6 +445,7 @@ fn demo(request: &Request) -> Collected {
                 usage: usage(agent.id.raw()),
                 context_percent: (agent.kind == HarnessKind::ClaudeCode)
                     .then(|| [38., 12., 71.][agent.id.raw() as usize % 3]),
+                cache_cold: (agent.kind == HarnessKind::OpenCode).then_some(64_000),
                 mcp: names,
                 started: start,
                 tracked: matches!(agent.kind, HarnessKind::ClaudeCode | HarnessKind::OpenCode),
@@ -789,6 +842,9 @@ fn agent_row(
     };
     if let Some(age) = agent.and_then(AgentStats::age) {
         detail.push_str(&format!(" · up {}", short_age(age)));
+    }
+    if agent.is_some_and(|agent| agent.cache_cold.is_some()) {
+        detail.push_str(" · cache cold");
     }
     let context = agent.and_then(|agent| agent.context_percent);
     let mono = theme.mono_font.clone();

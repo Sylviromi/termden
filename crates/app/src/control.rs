@@ -481,6 +481,7 @@ impl TermdenApp {
                             "age_s": agent.and_then(|agent| agent.age()),
                             "tracked": agent.is_some_and(|agent| agent.tracked),
                             "context_percent": agent.and_then(|agent| agent.context_percent),
+                            "cache_cold_tokens": agent.and_then(|agent| agent.cache_cold),
                             "mcp": agent.map(|agent| agent.mcp.clone()).unwrap_or_default(),
                             "tokens": agent.and_then(|agent| agent.usage).map(|usage| json!({
                                 "input": usage.input,

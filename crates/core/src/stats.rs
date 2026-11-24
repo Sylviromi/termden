@@ -380,6 +380,34 @@ pub fn opencode_usage(session: &str) -> Option<Usage> {
     None
 }
 
+/// Prompt-cache TTL assumed for opencode: the Go gateway keeps a prefix about
+/// five minutes (no published figure; upstream providers range from ~5 to 35
+/// minutes), so past this a reply re-reads the whole context uncached.
+pub const OPENCODE_CACHE_TTL_MS: u64 = 5 * 60 * 1000;
+
+/// Context size (tokens) of an opencode session's latest finished reply and
+/// when it finished (unix ms), for the cold-cache warning.
+pub fn opencode_last_reply(session: &str) -> Option<(u64, u64)> {
+    use rusqlite::{Connection, OpenFlags};
+
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let conn = Connection::open_with_flags(opencode_db()?, flags).ok()?;
+    let _ = conn.busy_timeout(Duration::from_millis(400));
+    conn.query_row(
+        "SELECT json_extract(data,'$.time.completed'), \
+                COALESCE(json_extract(data,'$.tokens.input'),0) \
+                + COALESCE(json_extract(data,'$.tokens.cache.read'),0) \
+                + COALESCE(json_extract(data,'$.tokens.cache.write'),0) \
+         FROM session_message \
+         WHERE session_id = ?1 AND type = 'assistant' \
+           AND json_extract(data,'$.time.completed') IS NOT NULL \
+         ORDER BY seq DESC LIMIT 1",
+        [session],
+        |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
+    )
+    .ok()
+}
+
 /// The opencode sessions a termden tile has used since `since_ms`, found
 /// through the per-harness instructions file opencode records with every
 /// session (`/new` adds one).
