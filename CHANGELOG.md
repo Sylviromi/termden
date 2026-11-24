@@ -5,6 +5,13 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.4.0
+
+- Activity is now a screen: a resizable tile in the canvas you can drag, zoom and close, shaped like a group chat. Messages between agents are collapsed bubbles you click to read, and shared results carry an "open results" link; app and workspace notices are left out
+- Stats is a tile too, opened per workspace beside the focused tile instead of a fixed strip on the right
+- A Home workspace with its own agent, a right-click menu on workspaces, and workspaces you can put away (unload) without stopping their agents
+- `termdenctl activity on|off`
+
 ## v0.3.0
 
 - New Sidebar setting: Pinned (as before) or Auto-hide, which hides the sidebar until you move the pointer to the left screen edge and slides it out over the tiles
