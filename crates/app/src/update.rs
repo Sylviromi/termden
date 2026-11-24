@@ -154,27 +154,47 @@ impl TermdenApp {
         cx.spawn(async move |this, cx| {
             loop {
                 let release = cx.background_executor().spawn(async { latest() }).await;
-                let alive = this.update(cx, |this, cx| {
-                    let busy = this
-                        .update
-                        .as_ref()
-                        .is_some_and(|u| !matches!(u.phase, Phase::Offered));
-                    if !busy {
-                        this.update =
-                            release
-                                .filter(|r| newer(&r.tag, VERSION))
-                                .map(|release| Update {
-                                    release,
-                                    phase: Phase::Offered,
-                                });
-                    }
-                    cx.notify();
-                });
+                let alive = this.update(cx, |this, cx| this.offer(release, cx));
                 if alive.is_err() {
                     break;
                 }
                 Timer::after(CHECK_EVERY).await;
             }
+        })
+        .detach();
+    }
+
+    fn offer(&mut self, release: Option<Release>, cx: &mut Context<Self>) {
+        let busy = self
+            .update
+            .as_ref()
+            .is_some_and(|u| !matches!(u.phase, Phase::Offered));
+        if !busy {
+            self.update = release
+                .filter(|r| newer(&r.tag, VERSION))
+                .map(|release| Update {
+                    release,
+                    phase: Phase::Offered,
+                });
+        }
+        cx.notify();
+    }
+
+    /// Look for a release now instead of waiting for the next poll.
+    pub fn check_now(&mut self, cx: &mut Context<Self>) {
+        self.update_status = Some("Checking…");
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let release = cx.background_executor().spawn(async { latest() }).await;
+            this.update(cx, |this, cx| {
+                this.update_status = Some(match &release {
+                    None => "Could not reach GitHub",
+                    Some(r) if newer(&r.tag, VERSION) => "",
+                    Some(_) => "Up to date",
+                });
+                this.offer(release, cx);
+            })
+            .ok();
         })
         .detach();
     }

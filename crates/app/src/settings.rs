@@ -96,6 +96,7 @@ pub fn render(
                             .child(row("Title bar", theme).child(title_bar_choices(app, cx)))
                             .child(row("Sidebar", theme).child(sidebar_choices(app, cx))),
                     ))
+                    .child(section("UPDATES", theme, update_row(app, cx)))
                     .child(section(
                         "SHORTCUTS · CTRL+SHIFT +",
                         theme,
@@ -518,6 +519,52 @@ fn theme_panel(
                 .text_size(theme.ui(9.5))
                 .text_color(theme.overlay)
                 .child("Type to search · ↑↓ preview · Enter keep · Esc close"),
+        )
+        .into_any_element()
+}
+
+fn update_row(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
+    let theme = &app.theme;
+    let status = match &app.update {
+        Some(update) => format!("{} available", update.release.tag),
+        None => app.update_status.unwrap_or("").to_string(),
+    };
+    row("Version", theme)
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(10.))
+                .text_size(theme.ui(10.5))
+                .text_color(theme.subtext)
+                .child(format!("{} {status}", crate::update::VERSION))
+                .child(
+                    div()
+                        .id("check-update")
+                        .px(px(10.))
+                        .h(px(26.))
+                        .flex()
+                        .items_center()
+                        .rounded(px(7.))
+                        .border_1()
+                        .border_color(theme.text.opacity(0.10))
+                        .cursor_pointer()
+                        .hover(|style| style.bg(theme.surface0))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if this.update.is_some() {
+                                this.settings_open = false;
+                                this.update_open = true;
+                                cx.notify();
+                            } else {
+                                this.check_now(cx);
+                            }
+                        }))
+                        .child(if app.update.is_some() {
+                            "Update"
+                        } else {
+                            "Check now"
+                        }),
+                ),
         )
         .into_any_element()
 }

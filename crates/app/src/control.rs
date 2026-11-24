@@ -106,7 +106,7 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
                              prints the page URL. {from,title,description,items:[{path,caption,description}]}
   rename <h> <name>          rename a harness
   version                    running version, and a newer release if one is out
-  update [show]              install the newer release (or just show its popup); the
+  update [show|check]        check now for a release, or install it / show its popup; the
                              user confirms the restart into it
   title <h> [text]           set what a harness is working on (empty clears)
   tag <h> [text]             set a harness role tag (empty clears)
@@ -439,6 +439,10 @@ impl TermdenApp {
                 ),
                 None => crate::update::VERSION.into(),
             },
+            "update" if arg == Some("check") => {
+                self.check_now(cx);
+                "checking; `termdenctl version` shows the result in a moment".into()
+            }
             "update" => {
                 // Show the popup too, so a CLI update is visible in the window.
                 self.update_open = self.update.is_some();

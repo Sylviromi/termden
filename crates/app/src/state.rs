@@ -116,6 +116,7 @@ pub struct TermdenApp {
     pub sidebar_anim: f32,
     pub sidebar_anim_at: Instant,
     pub settings_open: bool,
+    pub update_status: Option<&'static str>,
     /// Theme chooser in settings (`None` = collapsed to one row).
     pub theme_browser: Option<crate::settings::ThemeBrowser>,
     pub theme_scroll: ScrollHandle,
@@ -235,6 +236,7 @@ impl TermdenApp {
             sidebar_anim: 0.0,
             sidebar_anim_at: Instant::now(),
             settings_open: false,
+            update_status: None,
             theme_browser: None,
             theme_scroll: ScrollHandle::new(),
             theme_smooth: Default::default(),
