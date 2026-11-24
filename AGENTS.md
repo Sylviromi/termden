@@ -340,6 +340,7 @@ To add one: put its Ghostty theme file name, id and display name in
 - **Adapters:** Claude Code via `--settings` hooks; opencode via our config +
   its SSE event stream. Never edit `~/.claude` or the user's global opencode
   config.
+- **Memory:** when `rhodon-mcp` is on `PATH`, claude/opencode tiles in a non-Home workspace get a `rhodon` MCP server that is `termdenctl memory <folder name>`, a proxy pinning every call to that project folder of the Rhodon agent vault (hides `project`/`*`, adds `compact`) plus one prompt sentence. Tools only: agents with a shell can still read the vault on disk.
 - **Messaging:** hybrid. Every agent has a mailbox; an idle harness gets a short
   "you have mail" notice in its terminal, and the full text is pulled via an MCP
   tool. Cross-workspace messages are allowed but explicitly addressed. The

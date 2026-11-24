@@ -11,6 +11,7 @@ use std::process::{Command, ExitCode};
 use termden_core::state::control_socket;
 
 mod mcp;
+mod memory;
 
 const USAGE: &str = "\
 usage: termdenctl <command>
@@ -69,6 +70,7 @@ fn main() -> ExitCode {
         }
         Some("send") => send(&args[1..]),
         Some("mcp") => mcp::serve(),
+        Some("memory") => memory::serve(args.get(1).map_or("", String::as_str)),
         Some("session-hook") => session_hook(args.get(1)),
         Some("statusline") => statusline(args.get(1)),
         Some("mail") => mail(&args[1..], me.as_deref()),

@@ -11,7 +11,18 @@ use termden_core::{HarnessId, HarnessKind};
 
 const HOME_PROMPT: &str = " You are the Home agent: you belong to no project. Your job is creating workspaces and general conversation with the user. To make a workspace run `termdenctl add-workspace <dir>` (create the folder first if needed; it prints the workspace id); start an agent there with `termdenctl add claude <workspace id>` only if the user wants one. Do not do project work yourself: point the user to the workspace's agents.";
 
-fn prompt(id: HarnessId, name: &str, home: bool) -> String {
+const MEMORY_PROMPT: &str = " The rhodon MCP server is this project's persistent memory (tools list, read, write, append, search, delete, compact). It is already scoped to this project. At the start of a task, read what is relevant; when you learn something a future agent would need (decisions, gotchas, the user's preferences), write it down as a short note. Keep it tidy: call compact now and then.";
+
+/// Rhodon project folder for a workspace: its folder name, if rhodon-mcp is installed.
+pub fn memory_project(path: &str, home: bool) -> Option<String> {
+    let name = std::path::Path::new(path).file_name()?.to_str()?;
+    let ok = !home && !name.starts_with('.') && !name.contains(['/', '\\', '*']);
+    let installed = std::env::var_os("PATH")
+        .is_some_and(|p| std::env::split_paths(&p).any(|d| d.join("rhodon-mcp").is_file()));
+    (ok && installed).then(|| name.to_string())
+}
+
+fn prompt(id: HarnessId, name: &str, home: bool, memory: bool) -> String {
     let text = format!(
         "You are running inside termden as harness {} (named {name}). Other agents run in tiles \
          beside you. The termden MCP server gives you tools (in Claude Code they are named \
@@ -31,17 +42,24 @@ fn prompt(id: HarnessId, name: &str, home: bool) -> String {
          resize tiles.",
         id.raw(),
     );
+    let text = if memory { text + MEMORY_PROMPT } else { text };
     if home { text + HOME_PROMPT } else { text }
 }
 
 /// Shell command line for a new harness; written files live under
 /// `$XDG_RUNTIME_DIR/termden/harness/<id>/`.
-pub fn command(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> String {
+pub fn command(
+    id: HarnessId,
+    name: &str,
+    kind: HarnessKind,
+    home: bool,
+    memory: Option<&str>,
+) -> String {
     let base = kind.default_command();
     if !matches!(kind, HarnessKind::ClaudeCode | HarnessKind::OpenCode) {
         return base.into();
     }
-    match write_config(id, name, kind, home) {
+    match write_config(id, name, kind, home, memory) {
         Some(command) => command,
         None => {
             eprintln!("termden: could not write launch config; starting {base} plain");
@@ -50,7 +68,13 @@ pub fn command(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Stri
     }
 }
 
-fn write_config(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Option<String> {
+fn write_config(
+    id: HarnessId,
+    name: &str,
+    kind: HarnessKind,
+    home: bool,
+    memory: Option<&str>,
+) -> Option<String> {
     let dir: PathBuf = runtime_dir().join("harness").join(id.raw().to_string());
     fs::create_dir_all(&dir).ok()?;
     let ctl = crate::pty::bin_dir()?.join("termdenctl");
@@ -62,9 +86,13 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Opt
     match kind {
         HarnessKind::ClaudeCode => {
             let mcp = dir.join("mcp.json");
-            let config = json!({ "mcpServers": { "termden": {
+            let mut config = json!({ "mcpServers": { "termden": {
                 "command": ctl, "args": ["mcp"], "env": env,
             }}});
+            if let Some(project) = memory {
+                config["mcpServers"]["rhodon"] =
+                    json!({ "command": ctl, "args": ["memory", project] });
+            }
             fs::write(&mcp, config.to_string()).ok()?;
             // The commit hook adds the sign-off; Claude must not add its own.
             let settings = dir.join("settings.json");
@@ -84,14 +112,14 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Opt
                 "claude --settings {} --mcp-config {} --append-system-prompt '{}'",
                 q(&settings),
                 q(&mcp),
-                prompt(id, name, home).replace('\'', "")
+                prompt(id, name, home, memory.is_some()).replace('\'', "")
             ))
         }
         _ => {
             let notes = dir.join("instructions.md");
-            fs::write(&notes, prompt(id, name, home)).ok()?;
+            fs::write(&notes, prompt(id, name, home, memory.is_some())).ok()?;
             let config = dir.join("opencode.json");
-            let body = json!({
+            let mut body = json!({
                 "instructions": [notes],
                 "mcp": { "termden": {
                     "type": "local",
@@ -100,6 +128,11 @@ fn write_config(id: HarnessId, name: &str, kind: HarnessKind, home: bool) -> Opt
                     "enabled": true,
                 }},
             });
+            if let Some(project) = memory {
+                body["mcp"]["rhodon"] = json!({
+                    "type": "local", "command": [ctl, "memory", project], "enabled": true,
+                });
+            }
             fs::write(&config, body.to_string()).ok()?;
             Some(format!(
                 "OPENCODE_CONFIG={} opencode --standalone",

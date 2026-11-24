@@ -448,7 +448,13 @@ impl TermdenApp {
             let command = match harness.kind {
                 HarnessKind::Shell => None,
                 kind if self.mode == Mode::Mirror => Some(kind.default_command().to_string()),
-                kind => Some(launch::command(id, &harness.name, kind, workspace.home)),
+                kind => Some(launch::command(
+                    id,
+                    &harness.name,
+                    kind,
+                    workspace.home,
+                    launch::memory_project(&workspace.path, workspace.home).as_deref(),
+                )),
             };
             match Session::spawn(
                 id,
