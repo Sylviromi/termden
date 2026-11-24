@@ -820,11 +820,13 @@ impl TermdenApp {
     pub fn set_status(&mut self, id: HarnessId, status: HarnessStatus) {
         let mut first_work = false;
         let mut unannounced = false;
+        let mut changed = false;
         if let Some(harness) = self
             .workspaces
             .iter_mut()
             .find_map(|workspace| workspace.harness_mut(id))
         {
+            changed = harness.status != status;
             harness.status = status;
             unannounced = status == HarnessStatus::Working
                 && harness.kind != HarnessKind::Shell
@@ -846,6 +848,15 @@ impl TermdenApp {
         // Names are assigned at creation; the first sign of work is arrival.
         if unannounced {
             self.announce_name(id);
+        }
+        // Agents already waiting when termden starts are not news.
+        if status == HarnessStatus::NeedsInput
+            && changed
+            && self.started.elapsed() > Duration::from_secs(15)
+            && let Some((_, harness)) = self.harness(id)
+            && harness.kind != HarnessKind::Shell
+        {
+            notify(&harness.name, "needs your input");
         }
     }
 
@@ -1509,4 +1520,25 @@ pub fn resolve_cwd(root: &str, cwd: &str) -> PathBuf {
     };
     let path = root.join(cwd);
     if path.is_dir() { path } else { home }
+}
+
+/// Desktop notification for things that happen while the window is not in
+/// front; silently nothing where `notify-send` is missing.
+pub fn notify(who: &str, what: &str) {
+    let _ = std::process::Command::new("notify-send")
+        .args([
+            "-a",
+            "termden",
+            "-i",
+            "termden",
+            "-h",
+            "string:desktop-entry:termden",
+            "--",
+            who,
+            what,
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
 }
