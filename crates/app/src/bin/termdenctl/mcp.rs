@@ -34,7 +34,7 @@ fn tools() -> Value {
         },
         {
             "name": "termden_show_results",
-            "description": "Show the user what you made or captured (images, screenshots, renders, videos, audio, PDFs, other files) as a gallery on a local web page. View only: nothing comes back. Returns the page URL immediately; post it in your reply with that exact link on its own line (the user Ctrl+clicks it). Use it whenever you produce several visual results or any file the user should look at. Give ABSOLUTE paths to existing files; 1-50 items.",
+            "description": "Show the user what you made or captured (images, screenshots, renders, videos, audio, PDFs, other files) as a gallery on a local web page. View only: nothing comes back. Returns the page URL immediately; post it in your reply with that exact link on its own line (the user Ctrl+clicks it). The link is stable: it always shows your newest set and updates by itself, so call again to update and reuse the same link; older sets move to History. Use it whenever you produce several visual results or any file the user should look at. Give ABSOLUTE paths to existing files; 1-50 items.",
             "inputSchema": { "type": "object", "required": ["title", "items"], "properties": {
                 "title": text("what these are, e.g. Generated app icons"),
                 "description": text("optional context for the whole set"),

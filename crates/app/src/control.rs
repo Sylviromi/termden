@@ -398,8 +398,8 @@ impl TermdenApp {
                 };
                 match crate::showcase::parse(&body) {
                     Ok((title, description, items)) => {
-                        let id = self.add_showcase(from, title, description, items);
-                        format!("{url}r/{id}/")
+                        self.add_showcase(from, title, description, items);
+                        format!("{url}r/")
                     }
                     Err(error) => format!("error: {error}"),
                 }

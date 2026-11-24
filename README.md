@@ -209,7 +209,8 @@ Claude Code and opencode tiles started by termden get a `termden` MCP server
 - `termden_set_name|tag|pronouns|title`: identity shown in the sidebar.
 - `termden_show_results`: shows you what an agent made or captured (images,
   screenshots, videos, audio, PDFs, files) as a gallery on a local
-  server, view only. The agent posts the link; `…/r/` lists the last 20 sets.
+  server, view only. The link `…/r/` is stable: it always shows the newest set and reloads
+  itself when an agent shares again; `…/r/all/` lists the last 20 sets.
 
 ## Configuration
 

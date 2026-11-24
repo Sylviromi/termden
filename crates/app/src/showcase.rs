@@ -59,14 +59,14 @@ pub fn parse(body: &Value) -> Result<(String, String, Vec<ShowItem>), String> {
 }
 
 impl TermdenApp {
-    /// Store a result set and return its id (`r/<id>/` on the results page).
+    /// Store a result set (`r/<id>/`; `r/` always shows the newest).
     pub fn add_showcase(
         &mut self,
         from: HarnessId,
         title: String,
         description: String,
         items: Vec<ShowItem>,
-    ) -> u64 {
+    ) {
         let id = self.showcases.iter().map(|s| s.id).max().unwrap_or(0) + 1;
         let from_name = self
             .harness(from)
@@ -97,16 +97,22 @@ impl TermdenApp {
         let excess = self.showcases.len().saturating_sub(KEEP);
         self.showcases.drain(..excess);
         self.save();
-        id
     }
 
-    /// GET routes under `r/`: the index, one set, and its files.
+    /// GET routes under `r/`: the latest set (the stable link), the history,
+    /// one older set, and files.
     pub(crate) fn showcase_route(&self, parts: &[&str]) -> Reply {
         match parts {
-            ["r"] => Reply::Page(index(self)),
+            ["r"] => Reply::Page(
+                self.showcases
+                    .last()
+                    .map_or_else(|| index(self), |s| gallery(self, s, true)),
+            ),
+            ["r", "all"] => Reply::Page(index(self)),
+            ["r", "latest"] => Reply::Page(self.showcases.last().map_or(0, |s| s.id).to_string()),
             ["r", id] => self
                 .find_showcase(id)
-                .map_or(Reply::NotFound, |s| Reply::Page(gallery(self, s))),
+                .map_or(Reply::NotFound, |s| Reply::Page(gallery(self, s, false))),
             ["r", id, "f", i] => self
                 .find_showcase(id)
                 .and_then(|s| s.items.get(i.parse::<usize>().ok()?))
@@ -136,10 +142,10 @@ fn index(app: &TermdenApp) -> String {
                 .items
                 .iter()
                 .position(|i| content_type(&i.path).starts_with("image/"))
-                .map(|i| format!("<img src=\"{}/f/{i}\">", s.id))
+                .map(|i| format!("<img src=\"../{}/f/{i}\">", s.id))
                 .unwrap_or_default();
             format!(
-                "<a class=set href=\"{id}/\"><div class=thumb>{thumb}</div><div><h3>{title}</h3>\
+                "<a class=set href=\"../{id}/\"><div class=thumb>{thumb}</div><div><h3>{title}</h3>\
                  <p>{from} · {time} · {n} item{s}</p></div></a>",
                 id = s.id,
                 title = esc(&s.title),
@@ -156,7 +162,8 @@ fn index(app: &TermdenApp) -> String {
             .to_string()
     } else {
         format!(
-            "<header><div><h1>Shared results</h1><div class=meta>latest {} kept</div></div></header>\
+            "<header><div><h1>Shared results</h1><div class=meta>latest {} kept</div></div>\
+             <a class=all href=\"../\">Latest</a></header>\
              <main><div class=sets>{rows}</div></main>",
             KEEP
         )
@@ -166,7 +173,7 @@ fn index(app: &TermdenApp) -> String {
 
 /// One result set as a gallery: images large (click for full size), video
 /// and audio playable, other files as open/download cards.
-fn gallery(app: &TermdenApp, s: &Showcase) -> String {
+fn gallery(app: &TermdenApp, s: &Showcase, live: bool) -> String {
     let items: String = s
         .items
         .iter()
@@ -208,7 +215,7 @@ fn gallery(app: &TermdenApp, s: &Showcase) -> String {
         .collect();
     let body = format!(
         "<header><div><h1>{title}</h1><div class=meta>{from} · {time} · {n} item{s}</div></div>\
-         <a class=all href=\"../\">All results</a></header>\
+         <div class=nav>{newer}<a class=all href=\"{all}\">History</a></div></header>\
          <main>{desc}<div class=gallery>{items}</div></main>",
         title = esc(&s.title),
         from = esc(&s.from_name),
@@ -218,11 +225,27 @@ fn gallery(app: &TermdenApp, s: &Showcase) -> String {
         desc = (!s.description.is_empty())
             .then(|| format!("<p class=question>{}</p>", esc(&s.description)))
             .unwrap_or_default(),
+        all = if live { "all/" } else { "../all/" },
+        newer = if live {
+            ""
+        } else {
+            "<a class=all href=\"../\">Latest</a>"
+        },
     );
-    document(app, &s.title, SHOW_CSS, &body)
+    let head = if live {
+        // The stable link follows the newest set: reload when it changes.
+        format!(
+            "{SHOW_CSS}<script>setInterval(async()=>{{try{{if((await(await fetch('latest/')).text())!='{}')location.reload()}}catch(e){{}}}},2000)</script>",
+            s.id
+        )
+    } else {
+        SHOW_CSS.to_string()
+    };
+    document(app, &s.title, &head, &body)
 }
 
 const SHOW_CSS: &str = "<style>
+.nav{display:flex;gap:.6rem;justify-content:flex-end}
 .all{color:var(--subtext);text-decoration:none;font-size:.82rem;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:8px;padding:.35rem .9rem}
 .all:hover{color:var(--text);border-color:var(--accent)}
 .gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}
