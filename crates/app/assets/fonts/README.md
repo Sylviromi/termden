@@ -5,6 +5,8 @@ the same families still work; these only fill the gap.
 - Noto Sans Regular/Medium/Bold (UI): SIL Open Font License 1.1
 - JetBrainsMono Nerd Font Regular/Bold (terminal): SIL Open Font License 1.1
   (Nerd Fonts glyphs: MIT)
+- Adwaita Mono Regular, subset to U+2300-23FF and U+2700-27BF (the glyphs of
+  Claude's spinner and tree, absent from JetBrainsMono): SIL Open Font License 1.1
 - Material Symbols Rounded (icons), subset to the glyphs termden uses:
   Apache License 2.0
 

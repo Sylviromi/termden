@@ -8,11 +8,18 @@ use crate::pty::Session;
 use crate::theme::Theme;
 use crate::widgets::spinner_frame;
 
+/// Claude's spinner and tree glyphs are missing from the terminal font. Left to
+/// the fallback, every reshape of such a row scans all installed fonts, which
+/// made each animated frame cost ~100 ms.
+const SYMBOL_FONT: &str = "Adwaita Mono";
+
 struct Span {
     text: String,
     color: Hsla,
     bg: Option<Hsla>,
     bold: bool,
+    /// Glyphs the terminal font lacks; see `SYMBOL_FONT`.
+    symbol: bool,
     /// Grid cells covered; 0 = size to the text (mock buffers).
     cells: usize,
 }
@@ -35,6 +42,7 @@ impl Buf {
             color,
             bg: None,
             bold: false,
+            symbol: false,
         });
         self
     }
@@ -46,6 +54,7 @@ impl Buf {
             color,
             bg: None,
             bold: true,
+            symbol: false,
         });
         self
     }
@@ -128,8 +137,14 @@ pub fn render_live(
         } else {
             1
         };
+        let symbol = matches!(ch, '\u{2300}'..='\u{23FF}' | '\u{2700}'..='\u{27BF}');
         match line.spans.last_mut() {
-            Some(span) if span.color == fg && span.bg == bg && span.bold == bold => {
+            Some(span)
+                if span.color == fg
+                    && span.bg == bg
+                    && span.bold == bold
+                    && span.symbol == symbol =>
+            {
                 span.text.push(ch);
                 span.cells += width;
             }
@@ -138,6 +153,7 @@ pub fn render_live(
                 color: fg,
                 bg,
                 bold,
+                symbol,
                 cells: width,
             }),
         }
@@ -177,6 +193,9 @@ fn lines_element(lines: Vec<Line>, theme: &Theme, cell_w: f32) -> AnyElement {
                     }
                     if let Some(bg) = span.bg {
                         element = element.bg(bg);
+                    }
+                    if span.symbol {
+                        element = element.font_family(SYMBOL_FONT);
                     }
                     if span.bold {
                         element = element.font_weight(FontWeight::SEMIBOLD);

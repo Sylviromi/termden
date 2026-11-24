@@ -67,6 +67,7 @@ fn main() {
                 include_bytes!("../assets/fonts/JetBrainsMonoNerdFont-Regular.ttf"),
                 include_bytes!("../assets/fonts/JetBrainsMonoNerdFont-Bold.ttf"),
                 include_bytes!("../assets/fonts/MaterialSymbolsRounded-termden.ttf"),
+                include_bytes!("../assets/fonts/AdwaitaMono-Regular-termden.ttf"),
             ]
             .into_iter()
             .map(std::borrow::Cow::Borrowed)
