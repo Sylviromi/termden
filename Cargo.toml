@@ -26,6 +26,8 @@ strip = true
 
 [profile.dev]
 opt-level = 1
+# Full debuginfo made the binary 685MB; paging it in dominated a cold start.
+debug = "line-tables-only"
 
 [profile.dev.package."*"]
 opt-level = 2
