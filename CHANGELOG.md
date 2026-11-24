@@ -5,6 +5,10 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.8.2
+
+- Much faster redraws while Claude works: its spinner and tree glyphs (`✻ ⎿ ⏵`) are drawn from a bundled symbol font instead of a search through every installed font on each frame
+
 ## v0.8.1
 
 - Faster start: the shell PATH lookup now runs while the window comes up, so the first tiles attach without waiting for it
