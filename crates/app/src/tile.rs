@@ -153,29 +153,7 @@ pub fn render(
             .child(kind_badge(harness.kind, theme))
             .children((!harness.tag.is_empty()).then(|| tag_pill(&harness.tag, theme)))
             .child(div().flex_1().min_w(px(0.)))
-            .children(
-                app.stats
-                    .workspaces
-                    .get(&workspace.id)
-                    .and_then(|stats| stats.agent(id))
-                    .and_then(|agent| agent.cache_cold)
-                    .map(|tokens| {
-                        div()
-                            .flex_shrink_0()
-                            .px(px(6.))
-                            .h(px(18.))
-                            .flex()
-                            .items_center()
-                            .rounded(px(5.))
-                            .bg(theme.peach.opacity(0.16))
-                            .text_size(theme.ui(9.))
-                            .text_color(theme.peach)
-                            .child(format!(
-                                "cache cold · /new saves ~{}",
-                                termden_core::stats::short_tokens(tokens)
-                            ))
-                    }),
-            )
+            .children(cache_chip(app, workspace.id, id))
             .child(status_chips(
                 harness,
                 app.sessions.get(&id).map(|s| (s.cols, s.rows)),
@@ -356,6 +334,44 @@ pub fn grid_size(rect: TRect, cell: (f32, f32)) -> (u16, u16) {
     (
         (w / cell.0).floor().max(2.0) as u16,
         (h / cell.1).floor().max(1.0) as u16,
+    )
+}
+
+/// opencode's prompt cache: the last ten minutes of its life, then cold.
+fn cache_chip(
+    app: &TermdenApp,
+    workspace: termden_core::WorkspaceId,
+    id: HarnessId,
+) -> Option<AnyElement> {
+    let theme = &app.theme;
+    let cache = app
+        .stats
+        .workspaces
+        .get(&workspace)?
+        .agent(id)?
+        .cache?
+        .clone();
+    let text = match cache.left_min {
+        Some(left) if left <= 10 => format!("cache {left}m left"),
+        Some(_) => return None,
+        None => format!(
+            "cache cold · /new saves ~{}",
+            termden_core::stats::short_tokens(cache.context)
+        ),
+    };
+    Some(
+        div()
+            .flex_shrink_0()
+            .px(px(6.))
+            .h(px(18.))
+            .flex()
+            .items_center()
+            .rounded(px(5.))
+            .bg(theme.peach.opacity(0.16))
+            .text_size(theme.ui(9.))
+            .text_color(theme.peach)
+            .child(text)
+            .into_any_element(),
     )
 }
 

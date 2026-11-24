@@ -380,14 +380,19 @@ pub fn opencode_usage(session: &str) -> Option<Usage> {
     None
 }
 
-/// Prompt-cache TTL assumed for opencode: the Go gateway keeps a prefix about
-/// five minutes (no published figure; upstream providers range from ~5 to 35
-/// minutes), so past this a reply re-reads the whole context uncached.
-pub const OPENCODE_CACHE_TTL_MS: u64 = 5 * 60 * 1000;
+/// Prompt-cache lifetime assumed for a model with too little history to
+/// measure: the Go gateway keeps a prefix about five minutes.
+pub const OPENCODE_DEFAULT_TTL_MS: u64 = 5 * 60 * 1000;
 
-/// Context size (tokens) of an opencode session's latest finished reply and
-/// when it finished (unix ms), for the cold-cache warning.
-pub fn opencode_last_reply(session: &str) -> Option<(u64, u64)> {
+/// A session's latest finished reply: when it finished (unix ms), the context
+/// it read (input + cache), and its `provider/model`.
+pub struct LastReply {
+    pub completed_ms: u64,
+    pub context: u64,
+    pub model: String,
+}
+
+pub fn opencode_last_reply(session: &str) -> Option<LastReply> {
     use rusqlite::{Connection, OpenFlags};
 
     let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
@@ -397,15 +402,83 @@ pub fn opencode_last_reply(session: &str) -> Option<(u64, u64)> {
         "SELECT json_extract(data,'$.time.completed'), \
                 COALESCE(json_extract(data,'$.tokens.input'),0) \
                 + COALESCE(json_extract(data,'$.tokens.cache.read'),0) \
-                + COALESCE(json_extract(data,'$.tokens.cache.write'),0) \
+                + COALESCE(json_extract(data,'$.tokens.cache.write'),0), \
+                json_extract(data,'$.model.providerID') || '/' || json_extract(data,'$.model.id') \
          FROM session_message \
          WHERE session_id = ?1 AND type = 'assistant' \
            AND json_extract(data,'$.time.completed') IS NOT NULL \
          ORDER BY seq DESC LIMIT 1",
         [session],
-        |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
+        |row| {
+            Ok(LastReply {
+                completed_ms: row.get::<_, i64>(0)? as u64,
+                context: row.get::<_, i64>(1)? as u64,
+                model: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            })
+        },
     )
     .ok()
+}
+
+/// How long a model's prompt cache really lived, measured from the user's own
+/// history: every reply that followed another reply of the same model after a
+/// pause of a minute or more, with whether it still read most of the previous
+/// context from cache. `(pause seconds, was a hit)`.
+pub fn opencode_gap_samples(model: &str) -> Vec<(u64, bool)> {
+    use rusqlite::{Connection, OpenFlags};
+
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let Some(conn) = opencode_db().and_then(|db| Connection::open_with_flags(db, flags).ok())
+    else {
+        return Vec::new();
+    };
+    let _ = conn.busy_timeout(Duration::from_millis(2000));
+    let sql = "WITH a AS (SELECT session_id, seq, \
+          json_extract(data,'$.model.providerID') || '/' || json_extract(data,'$.model.id') AS m, \
+          json_extract(data,'$.time.created') AS c, json_extract(data,'$.time.completed') AS d, \
+          COALESCE(json_extract(data,'$.tokens.input'),0) + COALESCE(json_extract(data,'$.tokens.cache.read'),0) \
+            + COALESCE(json_extract(data,'$.tokens.cache.write'),0) AS ctx, \
+          COALESCE(json_extract(data,'$.tokens.cache.read'),0) AS rd \
+        FROM session_message WHERE type = 'assistant' AND json_extract(data,'$.time.completed') IS NOT NULL), \
+      p AS (SELECT m, (c - LAG(d) OVER w) / 1000 AS gap, LAG(ctx) OVER w AS pctx, rd, LAG(m) OVER w AS pm \
+        FROM a WINDOW w AS (PARTITION BY session_id ORDER BY seq)) \
+      SELECT gap, rd >= 0.5 * pctx FROM p WHERE m = ?1 AND pm = m AND pctx > 20000 AND gap >= 60";
+    let Ok(mut stmt) = conn.prepare(sql) else {
+        return Vec::new();
+    };
+    let Ok(rows) = stmt.query_map([model], |row| {
+        Ok((row.get::<_, i64>(0)? as u64, row.get::<_, bool>(1)?))
+    }) else {
+        return Vec::new();
+    };
+    rows.flatten().collect()
+}
+
+/// Cache lifetime (ms) from pause samples: walk pause buckets upward and keep
+/// extending while at least 60% of replies in a bucket (three or more of
+/// them) still hit; stop at the first bucket that mostly misses.
+pub fn cache_ttl_ms(samples: &[(u64, bool)]) -> u64 {
+    const LADDER_MIN: [u64; 9] = [5, 10, 20, 30, 60, 120, 240, 720, 1440];
+    let mut ttl = OPENCODE_DEFAULT_TTL_MS;
+    let mut low = 0;
+    for minutes in LADDER_MIN {
+        let high = minutes * 60;
+        let bucket: Vec<bool> = samples
+            .iter()
+            .filter(|(gap, _)| *gap > low && *gap <= high)
+            .map(|(_, hit)| *hit)
+            .collect();
+        low = high;
+        if bucket.len() < 3 {
+            continue;
+        }
+        let hits = bucket.iter().filter(|hit| **hit).count();
+        if hits * 10 < bucket.len() * 6 {
+            break;
+        }
+        ttl = high * 1000;
+    }
+    ttl
 }
 
 /// The opencode sessions a termden tile has used since `since_ms`, found
@@ -872,6 +945,21 @@ mod tests {
             ]
         );
         assert!(parse_status("{}", 7).unwrap().limits.is_empty());
+    }
+
+    #[test]
+    fn cache_ttl_follows_where_hits_stop() {
+        let mut samples = Vec::new();
+        for _ in 0..5 {
+            samples.push((200, true)); // 1-5 min
+            samples.push((500, true)); // 5-10 min
+            samples.push((2400, true)); // 30-60 min
+            samples.push((5000, false)); // 1-2 h
+        }
+        assert_eq!(cache_ttl_ms(&samples), 60 * 60 * 1000);
+        assert_eq!(cache_ttl_ms(&[(100, true)]), OPENCODE_DEFAULT_TTL_MS);
+        let misses = vec![(200, false); 4];
+        assert_eq!(cache_ttl_ms(&misses), OPENCODE_DEFAULT_TTL_MS);
     }
 
     #[test]
