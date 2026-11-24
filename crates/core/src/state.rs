@@ -208,6 +208,7 @@ mod tests {
                 accent: 0,
                 to: None,
                 harness: Some(HarnessId::new(7)),
+                ..Default::default()
             }],
             ..Default::default()
         };

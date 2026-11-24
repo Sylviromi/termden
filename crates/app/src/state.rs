@@ -850,16 +850,52 @@ impl TermdenApp {
             .find_map(|workspace| workspace.harness(id).map(|harness| (workspace, harness)))
     }
 
-    /// Show or hide the workspace stats pane; the choice is saved so it comes
-    /// back after a restart.
+    pub fn activity_on(&self) -> bool {
+        self.layouts
+            .get(&self.active)
+            .is_some_and(|l| l.contains(HarnessId::ACTIVITY))
+    }
+
+    /// Open the activity feed as a tile beside the focused one, or close it.
     pub fn toggle_activity(&mut self, cx: &mut Context<Self>) {
-        self.config.activity_open = !self.config.activity_open;
-        self.activity_stick.set(true);
-        if self.mode == Mode::Live
-            && let Err(error) = self.config.save()
-        {
-            eprintln!("termden: could not save config: {error}");
+        let active = self.active;
+        if self.activity_on() {
+            if let Some(layout) = self.layouts.get_mut(&active)
+                && !layout.remove(HarnessId::ACTIVITY)
+            {
+                self.layouts.remove(&active);
+            }
+            if self.focused == Some(HarnessId::ACTIVITY) {
+                self.focused = self.layouts.get(&active).and_then(|l| l.first_leaf());
+            }
+            self.zoomed = self.zoomed.filter(|id| *id != HarnessId::ACTIVITY);
+        } else {
+            self.activity_stick.set(true);
+            let tiles = self.layout_tiles(active);
+            let wanted = crate::stats::width(self.viewport.0);
+            match self.layouts.get_mut(&active) {
+                Some(layout) => {
+                    let target = self
+                        .focused
+                        .filter(|f| layout.contains(*f))
+                        .or_else(|| layout.first_leaf());
+                    if let Some(target) = target {
+                        layout.split_at(target, HarnessId::ACTIVITY, termden_core::DropZone::Right);
+                        let width = tiles
+                            .iter()
+                            .find(|(id, _)| *id == target)
+                            .map_or(wanted * 2.0, |(_, rect)| rect.w);
+                        layout.set_share(HarnessId::ACTIVITY, wanted / width);
+                    }
+                }
+                None => {
+                    self.layouts
+                        .insert(active, LayoutNode::leaf(HarnessId::ACTIVITY));
+                }
+            }
+            self.focused = Some(HarnessId::ACTIVITY);
         }
+        self.save();
         cx.notify();
     }
 
@@ -905,6 +941,10 @@ impl TermdenApp {
     }
 
     pub fn focus_harness(&mut self, id: HarnessId) {
+        if id == HarnessId::ACTIVITY {
+            self.focused = Some(id);
+            return;
+        }
         let workspace_id = self.harness(id).map(|(workspace, _)| workspace.id);
         if let Some(workspace_id) = workspace_id {
             self.active = workspace_id;
@@ -1332,7 +1372,7 @@ impl TermdenApp {
         }
         let eased = 1.0 - (1.0 - self.sidebar_anim).powi(2);
         let shown = pinned || self.sidebar_anim > 0.0;
-        let mut panel = shown.then(|| panel::render(self, window, cx));
+        let mut panel = shown.then(|| panel::render(self, cx));
         let floating = if pinned { None } else { panel.take() };
         let canvas = canvas::render(self, window, cx);
         let ghost = self.render_ghost();

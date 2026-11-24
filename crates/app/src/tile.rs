@@ -32,6 +32,9 @@ pub fn render(
     rect: TRect,
     cx: &mut Context<TermdenApp>,
 ) -> AnyElement {
+    if id == HarnessId::ACTIVITY {
+        return crate::activity::render(app, rect, cx);
+    }
     let Some((workspace, harness)) = app.harness(id) else {
         return div().into_any_element();
     };
@@ -365,7 +368,12 @@ fn status_chips(
         .into_any_element()
 }
 
-fn drop_overlay(active: DropZone, rect: TRect, accent: Hsla, theme: &Theme) -> AnyElement {
+pub(crate) fn drop_overlay(
+    active: DropZone,
+    rect: TRect,
+    accent: Hsla,
+    theme: &Theme,
+) -> AnyElement {
     let w = rect.w.max(1.0);
     let h = rect.h.max(1.0);
 

@@ -121,6 +121,26 @@ impl LayoutNode {
         }
     }
 
+    /// Give `leaf` the share `share` of the split it sits directly in.
+    pub fn set_share(&mut self, leaf: HarnessId, share: f32) {
+        if let LayoutNode::Split {
+            ratio,
+            first,
+            second,
+            ..
+        } = self
+        {
+            if matches!(**first, LayoutNode::Leaf(id) if id == leaf) {
+                *ratio = share.clamp(0.1, 0.9);
+            } else if matches!(**second, LayoutNode::Leaf(id) if id == leaf) {
+                *ratio = (1.0 - share).clamp(0.1, 0.9);
+            } else {
+                first.set_share(leaf, share);
+                second.set_share(leaf, share);
+            }
+        }
+    }
+
     /// Swap two leaves in place. Used for the center drop zone.
     pub fn swap(&mut self, a: HarnessId, b: HarnessId) -> bool {
         if a == b {

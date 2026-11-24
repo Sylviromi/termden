@@ -38,6 +38,7 @@ impl TermdenApp {
             );
             if let Some(entry) = self.activity.last_mut() {
                 entry.to = Some(target);
+                entry.detail = Some(text.clone());
             }
         }
         self.mail.push(Mail {

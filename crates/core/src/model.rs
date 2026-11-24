@@ -22,6 +22,11 @@ macro_rules! id_type {
 
 id_type!(WorkspaceId);
 id_type!(HarnessId);
+
+impl HarnessId {
+    /// Layout leaf of the activity screen; never a real harness.
+    pub const ACTIVITY: Self = Self(u32::MAX);
+}
 id_type!(SubagentId);
 
 /// The kind of process a harness runs.
@@ -215,7 +220,7 @@ pub struct Mail {
 }
 
 /// One line of the activity feed. Persisted so a reload keeps the history.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Activity {
     /// Local wall-clock "HH:MM" when it happened.
     pub time: String,
@@ -228,6 +233,15 @@ pub struct Activity {
     /// Harness this line is about; the feed reads its current name and color.
     #[serde(default)]
     pub harness: Option<HarnessId>,
+    /// Message body of a mail entry, shown when its bubble is opened.
+    #[serde(default)]
+    pub detail: Option<String>,
+    /// Results page path (`r/<id>/`) of a share entry.
+    #[serde(default)]
+    pub link: Option<String>,
+    /// Bubble expanded in the activity screen.
+    #[serde(skip)]
+    pub open: bool,
 }
 
 /// Work an agent shows the user (images, videos, files): view only, nothing

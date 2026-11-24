@@ -3,7 +3,7 @@ use gpui::{
     PathPromptOptions, Window, div, prelude::*, px,
 };
 use std::time::Instant;
-use termden_core::{Activity, Harness, HarnessKind, Workspace};
+use termden_core::{Harness, HarnessKind, Workspace};
 
 use crate::state::{Mode, TermdenApp};
 use crate::theme::Theme;
@@ -11,7 +11,7 @@ use crate::widgets::{
     ICON_FONT, dot, hspacer, icon_button, icons, kind_badge, pill, spinner, spinner_frame, tag_pill,
 };
 
-pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp>) -> AnyElement {
+pub fn render(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
     let theme = &app.theme;
     let radius = if app.config.sidebar == termden_core::Sidebar::Pinned {
         app.config.corner_radius
@@ -34,7 +34,6 @@ pub fn render(app: &TermdenApp, window: &mut Window, cx: &mut Context<TermdenApp
         .child(header(app, cx))
         .children(restart_banner(app, cx))
         .child(list(app, cx))
-        .child(activity(app, window))
         .child(footer(app, cx))
         .into_any_element()
 }
@@ -349,179 +348,6 @@ fn section_header(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement 
                 .detach();
             })),
         )
-        .into_any_element()
-}
-
-fn activity(app: &TermdenApp, window: &mut Window) -> AnyElement {
-    let theme = &app.theme;
-    let open = app.config.activity_open;
-    if app.activity_stick.replace(false) {
-        app.activity_scroll.scroll_to_bottom();
-    }
-    if app.activity_smooth.step(&app.activity_scroll) {
-        window.request_animation_frame();
-    }
-    if !open {
-        return div().into_any_element();
-    }
-
-    div()
-        .flex()
-        .flex_col()
-        .flex_shrink_0()
-        .px(px(9.))
-        .pb(px(8.))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .h(px(24.))
-                .px(px(6.))
-                .child(
-                    div()
-                        .text_size(theme.ui(9.5))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(theme.overlay)
-                        .child("ACTIVITY"),
-                ),
-        )
-        .children(open.then(|| {
-            div()
-                .id("activity-feed")
-                .track_scroll(&app.activity_scroll)
-                .overflow_y_scroll()
-                .max_h(px(210.))
-                .flex()
-                .flex_col()
-                .gap(px(6.))
-                .rounded(px(9.))
-                .border_1()
-                .border_color(theme.text.opacity(0.05))
-                .bg(theme.text.opacity(0.012))
-                .p(px(8.))
-                .children(app.activity.is_empty().then(|| {
-                    div()
-                        .text_size(theme.ui(9.))
-                        .text_color(theme.overlay)
-                        .child("quiet so far")
-                }))
-                .children(app.activity.iter().map(|entry| {
-                    // Entries remember their harness now; older ones only
-                    // stored a name and a workspace accent.
-                    let live = |entry: &Activity| {
-                        if let Some((workspace, harness)) =
-                            entry.harness.and_then(|id| app.harness(id))
-                        {
-                            return harness.color.unwrap_or(workspace.accent);
-                        }
-                        app.workspaces
-                            .iter()
-                            .flat_map(|w| &w.harnesses)
-                            .find(|h| h.name == entry.name)
-                            .and_then(|h| h.color)
-                            .unwrap_or(entry.accent)
-                    };
-                    let live_by_name = |name: &str, stored: usize| {
-                        app.workspaces
-                            .iter()
-                            .flat_map(|w| &w.harnesses)
-                            .find(|h| h.name == name)
-                            .and_then(|h| h.color)
-                            .unwrap_or(stored)
-                    };
-                    let system = entry.name == "Termden";
-                    let color = if system {
-                        theme.green
-                    } else {
-                        entry_color(theme, live(entry))
-                    };
-                    if system {
-                        return div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .px(px(8.))
-                            .py(px(3.))
-                            .rounded(px(6.))
-                            .bg(color.opacity(0.14))
-                            .border_1()
-                            .border_color(color.opacity(0.3))
-                            .text_size(theme.ui(10.))
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(color)
-                            .child(format!("{} {}", entry.name, entry.message).to_uppercase())
-                            .child(
-                                div()
-                                    .font_family(theme.mono_font.clone())
-                                    .text_size(theme.ui(8.5))
-                                    .font_weight(FontWeight::NORMAL)
-                                    .text_color(color.opacity(0.7))
-                                    .child(entry.time.clone()),
-                            );
-                    }
-                    div()
-                        .flex()
-                        .items_start()
-                        .gap(px(6.))
-                        .child(
-                            div()
-                                .flex_shrink_0()
-                                .mt(px(4.))
-                                .size(px(5.))
-                                .rounded_full()
-                                .bg(color),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(0.))
-                                .flex()
-                                .flex_wrap()
-                                .gap_x(px(5.))
-                                .text_size(theme.ui(10.))
-                                .child(
-                                    div()
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .text_color(color)
-                                        .child(entry.name.clone()),
-                                )
-                                .children(entry.to.as_ref().map(|(to, accent)| {
-                                    let to_color = entry_color(theme, live_by_name(to, *accent));
-                                    div()
-                                        .flex()
-                                        .gap_x(px(5.))
-                                        .child(div().text_color(theme.overlay).child("→"))
-                                        .child(
-                                            div()
-                                                .font_weight(FontWeight::SEMIBOLD)
-                                                .text_color(to_color)
-                                                .child(to.clone()),
-                                        )
-                                }))
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .min_w(px(60.))
-                                        .text_color(if system {
-                                            theme.green.opacity(0.75)
-                                        } else {
-                                            theme.subtext
-                                        })
-                                        .child(entry.message.clone()),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .flex_shrink_0()
-                                .mt(px(1.))
-                                .font_family(theme.mono_font.clone())
-                                .text_size(theme.ui(8.5))
-                                .text_color(theme.overlay.opacity(0.8))
-                                .child(entry.time.clone()),
-                        )
-                }))
-        }))
         .into_any_element()
 }
 
@@ -1049,7 +875,7 @@ fn footer(app: &TermdenApp, cx: &mut Context<TermdenApp>) -> AnyElement {
                     .child(label),
             )
     };
-    let activity_open = app.config.activity_open;
+    let activity_open = app.activity_on();
 
     div()
         .flex()
@@ -1224,7 +1050,7 @@ fn kind_picker(
 }
 
 /// Activity color index; `usize::MAX` marks the human (no agent color).
-fn entry_color(theme: &Theme, accent: usize) -> Hsla {
+pub(crate) fn entry_color(theme: &Theme, accent: usize) -> Hsla {
     if accent == usize::MAX {
         theme.text
     } else {

@@ -1,4 +1,5 @@
 mod actions;
+mod activity;
 mod canvas;
 mod choices;
 mod control;

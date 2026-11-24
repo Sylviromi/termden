@@ -159,12 +159,23 @@ fn walk(
 
 pub fn render(
     app: &TermdenApp,
-    _window: &gpui::Window,
+    window: &mut gpui::Window,
     cx: &mut Context<TermdenApp>,
 ) -> AnyElement {
     let theme = &app.theme;
     let rect = app.canvas_rect();
     let tiles = app.visible_tiles(app.active);
+    if tiles
+        .iter()
+        .any(|(id, _)| *id == termden_core::HarnessId::ACTIVITY)
+    {
+        if app.activity_stick.replace(false) {
+            app.activity_scroll.scroll_to_bottom();
+        }
+        if app.activity_smooth.step(&app.activity_scroll) {
+            window.request_animation_frame();
+        }
+    }
     let empty = tiles.is_empty();
 
     div()

@@ -98,8 +98,6 @@ pub struct Config {
     pub title_bar: TitleBar,
     /// The workspace stats pane on the right; remembered between runs.
     pub stats_open: bool,
-    /// The sidebar activity feed; remembered between runs.
-    pub activity_open: bool,
     pub sidebar: Sidebar,
 }
 
@@ -115,7 +113,6 @@ impl Default for Config {
             corner_radius: 12.0,
             title_bar: TitleBar::Auto,
             stats_open: false,
-            activity_open: true,
             sidebar: Sidebar::Pinned,
         }
     }

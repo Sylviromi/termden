@@ -248,6 +248,7 @@ pub fn seed_activity(app: &mut TermdenApp) {
             accent,
             to: None,
             harness: None,
+            ..Default::default()
         });
     }
 }

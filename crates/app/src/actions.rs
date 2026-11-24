@@ -166,6 +166,7 @@ impl TermdenApp {
             accent,
             to: None,
             harness: None,
+            ..Default::default()
         });
     }
 
@@ -186,6 +187,7 @@ impl TermdenApp {
                 accent,
                 to: None,
                 harness: Some(id),
+                ..Default::default()
             });
         }
     }

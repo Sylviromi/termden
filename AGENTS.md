@@ -103,7 +103,9 @@ crates/app/                package `termden`: GPUI binary `termden` + `termdenct
                            and the right-hand stats pane
   theme.rs                 Catppuccin Mocha + Everforest palettes/fonts
   mock.rs                  the demo fleet (3 workspaces, 8 harnesses)
-  panel.rs                 workspace tree, activity feed, tips, footer
+  panel.rs                 workspace tree, tips, footer
+  activity.rs              activity screen: a canvas tile (layout leaf
+                           `HarnessId::ACTIVITY`), mail bubbles, result links
   canvas.rs                canvas_rect, layout_rects (dwindle geometry)
   tile.rs                  tile chrome, drop zones, per-tile status bar
   terminal.rs              live grid renderer + mock ANSI buffers per kind

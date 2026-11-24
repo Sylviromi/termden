@@ -76,6 +76,11 @@ impl TermdenApp {
             from,
             format!("shared {n} result{}", if n == 1 { "" } else { "s" }),
         );
+        if let Some(entry) = self.activity.last_mut()
+            && entry.harness == Some(from)
+        {
+            entry.link = Some(format!("r/{id}/"));
+        }
         crate::state::notify(
             &from_name,
             &format!("shared {n} result{}", if n == 1 { "" } else { "s" }),

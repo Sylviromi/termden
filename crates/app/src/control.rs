@@ -90,6 +90,7 @@ commands (<h> is a harness id or name; <ws> a workspace id or name):
   ping                       liveness check
   whoami <h>                 kind, name and tag of a harness (used by the git hook)
   state                      JSON: workspaces, harnesses, layouts, window size
+  activity [on|off]          show or hide the activity screen
   stats [on|off]             JSON: per-workspace tokens, MCP servers and uptime;
                              `on`/`off` shows or hides the stats pane
   screen [h]                 visible text of a terminal (default: focused)
@@ -172,6 +173,12 @@ impl TermdenApp {
                 }
                 _ => self.stats_json().to_string(),
             },
+            "activity" => {
+                if self.activity_on() != (arg != Some("off")) {
+                    self.toggle_activity(cx);
+                }
+                "ok".into()
+            }
             // `shell|agent <tab> name <tab> tag`, for the git commit hook.
             "whoami" => match self.find_harness(arg).and_then(|id| self.harness(id)) {
                 Some((_, h)) => format!(
