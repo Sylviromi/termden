@@ -5,6 +5,10 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.7.0
+
+- New agents get a unique name and pronouns from termden itself, so it no longer depends on the agent calling a tool; `/clear` keeps them. The `termden_set_name` and `termden_set_pronouns` tools are gone (`termdenctl rename` and `termdenctl pronouns` remain for you)
+
 ## v0.6.0
 
 - Results links are stable: `…/r/` always shows the newest result an agent shared and reloads itself when it changes, so you keep one tab open; older sets move to History (`…/r/all/`)
