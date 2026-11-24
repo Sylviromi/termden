@@ -5,6 +5,14 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.6.0
+
+- Results links are stable: `…/r/` always shows the newest result an agent shared and reloads itself when it changes, so you keep one tab open; older sets move to History (`…/r/all/`)
+- opencode tiles show a prompt-cache timer: "cache Nm left" in the last ten minutes, then "cache cold · /new saves ~Nk". The lifetime is measured per model from your own history instead of guessed
+- Workspaces with no agents (only shells) that nobody has touched for 30 minutes unload themselves; their sessions keep running
+- Less lag with many agents: output from tiles you cannot see no longer redraws the window, and redraws from terminal output are capped at about 30 per second
+- The opencode Go limits and a tile's usage no longer vanish from Stats when a read of opencode's data fails for a moment
+
 ## v0.5.0
 
 - "Check now" in Settings (and `termdenctl update check`) looks for a new release right away instead of waiting for the next poll; when one is found the button becomes "Update"
