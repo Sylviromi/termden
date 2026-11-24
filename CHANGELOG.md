@@ -5,6 +5,11 @@ publishes the section for a tag as its release notes, and the in-app update
 popup shows it: write a `## vX.Y.Z` section before tagging (CI refuses tags
 without one). Keep it to what users notice, one line each.
 
+## v0.8.1
+
+- Faster start: the shell PATH lookup now runs while the window comes up, so the first tiles attach without waiting for it
+- No more repeated "needs your input" notifications for agents that were already waiting when termden started
+
 ## v0.8.0
 
 - With Rhodon's `rhodon-mcp` installed, claude and opencode agents get a project memory: a `rhodon` tool set pinned to their workspace folder (they cannot name or reach other projects), a `compact` tool to tidy it, and a line in their prompt to use it
